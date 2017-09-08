@@ -1,0 +1,41 @@
+1) both 1.1
+2)american english, british eng. User-agent (browser, operating system, language, geckoversion)
+3)192.168.1.102. 128.119.245.12
+4)200 OK
+5) tues 23 sept 2003, 05:29;00 GMT
+6)73BYTES
+7)Everything is there.
+
+
+8)Nope.
+9)Yes, in the packet analyze view, at the bottom there is a section "Line-based text data" where the contents are shown.
+10)Yes, the parameter is the query date
+11)304 not modified. No (new) contents were sent back to the client since they were not modified since last request.
+
+The first time the client requests the page, it has an empty cache so the server will respond with that page, and the client will store it. Then the second time the client requests the page (now with that page already in the cache) it will ask the server if the page's contents have been modified since the last retrieval. If not, the client will display the data from the cache, and if yes the server will explicitly send the page with the updated contents.
+
+
+
+12) Just one.
+13) Four.
+14) 200 OK.
+15) NO.
+
+We make a long request (4500B) to the server from our browser, and since the response is larger than a single TCP segment, it is broken down (at transport layer - 4th) into several (4) TCP segments to transmit the whole HTTP response. Since the application layer doesn't know how TCP operates, there won't be any information about such segmentation in the HTTP header.
+
+
+16) 3, first one to http://gaia.cs.umass.edu/wireshark-labs/HTTP-wireshark-file4.html (the main html file), second one to http://www.aw-bc.com/catalog/images/pearson-logo-footer.gif (logo, top image) and third one to http://manic.cs.umass.edu/~kurose/cover.jpg
+17) They were downloaded in parallel since two consecutive HTTP requests were made after getting the first response.
+
+We make a request to the server: a simple HTML page with two images and some text. Since the images are stored in different network places, the main HTML file only contains the URLs to those images. So the very first thing to get from the server is the main HTML file, and after it is retrieved two requests are parallely made to the correspondent addresses to retrieve the images that the main HTML file refers to. At the end, a 200 OK response is obtained from both network locations.
+
+
+18) 401 Authorization required
+19) The new request contains an additional field "Authorization"
+
+We make a request to a page that is password protected. So when we first send the http get without the credentials, the server asks to send the credentials. Then we get a window to type our username and password. This information is sent as a second http request with a new field authorisation. Then the credentials are checked in the server and upon match we get an OK from it.
+
+20) Whether the TCP connection should be closed or kept open. In a multi-user environment the server may want to close the connection after every request made by the user, whereas for a low traffic level it may leave connections open for a while (from approx. 5 mins) for the better user experience.
+
+
+
