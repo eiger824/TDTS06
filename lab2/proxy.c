@@ -9,6 +9,7 @@
 #include <sys/types.h> 
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netdb.h>
 //#include <regex.h>
 
 const unsigned MAX_BUFFER_LENGTH = 10000;
@@ -80,17 +81,17 @@ int main(int argc, char *argv[])
    
 
     /*    //define our regex to extract host name
-    ret = regcomp(&regex, "^Host:", 0);
-    if (ret)
-      {
-	fprintf(stderr, "ERROR, could not compile regexp\n");
-      }
+	  ret = regcomp(&regex, "^Host:", 0);
+	  if (ret)
+	  {
+	  fprintf(stderr, "ERROR, could not compile regexp\n");
+	  }
     
-    ret = regexec(&regex, buffer, 0 , pmatch, 0);
-    if (!ret)
-      {
+	  ret = regexec(&regex, buffer, 0 , pmatch, 0);
+	  if (!ret)
+	  {
 	
-      }
+	  }
     */
     char hostname[200];
     for (unsigned i=0; i < strlen(buffer)-5; ++i)
@@ -106,6 +107,7 @@ int main(int argc, char *argv[])
 	      hostname[j-(i+6)] = buffer[j];
 	      ++j;
 	    } while (buffer[j] != '\r');
+	    hostname[j-(i+6)] = 0; //Null-terminate
 	    break;
 	  }
       }
@@ -118,45 +120,46 @@ int main(int argc, char *argv[])
 	fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
 	exit(1);
       }
+ 
+
+    // loop through all the results and connect to the first we can
+    for(p = servinfo; p != NULL; p = p->ai_next) {
+      if ((sockfdp = socket(p->ai_family, p->ai_socktype,
+			    p->ai_protocol)) == -1) {
+	perror("socket");
+	continue;
+      }
+
+      if (connect(sockfdp, p->ai_addr, p->ai_addrlen) == -1) {
+	perror("connect");
+	close(sockfdp);
+	continue;
+      }
+
+      break; // if we get here, we must have connected successfully
+    }
+
+    if (p == NULL) {
+      // looped off the end of the list with no connection
+      fprintf(stderr, "failed to connect\n");
+      exit(2);
+    }
+
+
+    /*
+      Action!
+    */
+
+    if ((n = write(sockfdp, buffer, strlen(buffer))) < 0 )
+      {
+	perror("Write");
+      }
+    else
+      {
+	printf("(%d bytes written)\n");
+      }
+
   }
-
-  // loop through all the results and connect to the first we can
-  for(p = servinfo; p != NULL; p = p->ai_next) {
-    if ((sockfdp = socket(p->ai_family, p->ai_socktype,
-			 p->ai_protocol)) == -1) {
-      perror("socket");
-      continue;
-    }
-
-    if (connect(sockfdp, p->ai_addr, p->ai_addrlen) == -1) {
-      perror("connect");
-      close(sockfdp);
-      continue;
-    }
-
-    break; // if we get here, we must have connected successfully
-  }
-
-  if (p == NULL) {
-    // looped off the end of the list with no connection
-    fprintf(stderr, "failed to connect\n");
-    exit(2);
-  }
-
-
-  /*
-    Action!
-  */
-
-  if ((n = write(sockfdp, buffer, strlen(buffer))) < 0 )
-    {
-      perror("Write");
-    }
-  else
-    {
-      printf("(%d bytes written)\n");
-    }
-
   freeaddrinfo(servinfo); // all done with this structure
   return 0; 
 }
