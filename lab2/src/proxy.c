@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
          //Create a thread to handle the incoming connection
          thread_data_array[nr_active_thread].thread_id = nr_active_thread;
          thread_data_array[nr_active_thread].priority = HIGH;
-         err = pthread_create(&(threads[get_size(threads)]), NULL,
+         err = pthread_create(&(threads[nr_active_thread]), NULL,
                               &handle_client, &thread_data_array[nr_active_thread]);
          if (err != 0)
          {
@@ -171,14 +171,13 @@ int main(int argc, char *argv[])
          else
          {
             printf("Thread created successfully. Starting request handling\n");
+            //add up counter
+            ++nr_active_thread;
          }
 #endif
-         //add up counter
-         ++nr_active_thread;
       }
    }
 
-   freeaddrinfo(servinfo); // all done with this structure
    return 0; 
 }
 
@@ -205,7 +204,7 @@ void *handle_client(void *arg)
    //Lock the mutex thread
    pthread_mutex_lock(&lock);
 
-   pthread_t id = pthread_self();
+   //pthread_t id = pthread_self();
    struct thread_data *data;
    data = (struct thread_data*) arg;
    printf("Thread id: %d, priority: [%s]\n", data->thread_id,
