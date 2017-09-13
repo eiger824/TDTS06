@@ -10,22 +10,32 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <signal.h>
 #include "definitions.h"
+
+//Socket descriptors, made global
+int sockfd, sockfdp, newsockfd;
 
 void help(const char* prog);
 void info();
 void *handle_client(void *arg);
+void sig_handler(int signo);
 
 int main(int argc, char *argv[])
 {
-   int sockfd, sockfdp, newsockfd, clilen, err;
+   int clilen, err, signo;
    char buffer[MAX_BUFFER_LENGTH];
    bool hex = false;
    struct sockaddr_in serv_addr, cli_addr;
- 
    //to use with getaddrinfo() -> host discovery
    struct addrinfo hints, *servinfo, *p;
    int n,c,rv,ret;
+
+   //First of all, register our signal handler
+   if (signal(SIGINT, sig_handler) == SIG_ERR)
+   {
+	   perror("Error registering signal handler");
+   }
 
    while ((c = getopt(argc,argv,"Hhm:p:v")) != -1)
    {
@@ -237,4 +247,18 @@ void *handle_client(void *arg)
 #ifdef DEBUG_MODE
    printf("Thread id: %lu\n", id);
 #endif
+}
+
+void sig_handler(int signo)
+{
+	if (signo == SIGINT)
+	{
+		printf("\rReceived SIGINT, Exiting...\n");
+		if (sockfd >= 0) close(sockfd);
+		if (newsockfd >= 0) close(newsockfd);
+		if (sockfdp >= 0) close(sockfdp);
+
+		//And exit program
+		exit(0);
+	}
 }
