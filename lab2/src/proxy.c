@@ -23,8 +23,10 @@ int signo;
 unsigned nr_active_thread = 0;
 //array of thread data structs
 struct thread_data thread_data_array[MAX_BUFFER_LENGTH];
+//Mutex thread
+pthread_mutex_t lock;
 
-
+//Functions
 void help(const char* prog);
 void info();
 void *handle_client(void *arg);
@@ -90,10 +92,24 @@ int main(int argc, char *argv[])
       printf("Hex mode when printing data:\t%s\n", (hex)?"enabled":"disabled");
    else
       printf("Display received data buffer:\tdisabled\n");
+   printf("------------------------------------------------------\n");
 #endif
 
    //Allocate memory for the threads
    threads = malloc(MAX_SIM_REQUESTS * sizeof(pthread_t));
+
+   //Initialize or mutex thread
+   if ((err = pthread_mutex_init(&lock, NULL)) != 0)
+   {
+      perror("Mutex init failed");
+      return 1;
+   }
+#ifdef DEBUG_MODE
+   else
+   {
+      printf("Mutex init success!\n");
+   }
+#endif
 
    //Socket creation
    sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -186,6 +202,9 @@ void info()
 
 void *handle_client(void *arg)
 {
+   //Lock the mutex thread
+   pthread_mutex_lock(&lock);
+
    pthread_t id = pthread_self();
    struct thread_data *data;
    data = (struct thread_data*) arg;
@@ -195,10 +214,10 @@ void *handle_client(void *arg)
 
    bzero(buffer,MAX_BUFFER_LENGTH);
    n = read(newsockfd,buffer,MAX_BUFFER_LENGTH-1);
-   if (n < 0) fprintf(stderr, "ERROR reading from socket\n");
+   if (n < 0) perror("ERROR reading from socket");
 
 #ifdef DEBUG_MODE
-   printf("(->)Client sends data:\n");
+   printf("(C -> P )Client sends data:\n");
    if (!omit)
       print_data(buffer, hex);
 #endif
@@ -263,7 +282,7 @@ void *handle_client(void *arg)
 #ifdef DEBUG_MODE
    else
    {
-      printf("(->)Proxy forwards data (%d bytes)\n", n);
+      printf("(P --> S)Proxy forwards data (%d bytes)\n", n);
    }
 #endif
 
@@ -271,9 +290,6 @@ void *handle_client(void *arg)
      Read response from server after cleaning sending buffer
    */
    memset(buffer, 0, MAX_BUFFER_LENGTH);
-#ifdef DEBUG_MODE
-   printf("Now waiting for server to respond...\n");
-#endif
    if ((n = read(sockfdp, buffer, MAX_BUFFER_LENGTH)) < 0)
    {
       perror("Error reading from socket");
@@ -281,8 +297,8 @@ void *handle_client(void *arg)
 #ifdef DEBUG_MODE
    else
    {
-      printf("(<-)Received %d bytes from server:\n", n);
-      printf("(<-)Proxy forwards data back to client\n");
+      printf("(P <-- S)Received %d bytes from server:\n", n);
+      printf("(C <-- P)Proxy forwards data back to client\n");
       //Send it back to the client
       if ((ret = write(newsockfd, buffer, n)) < 0)
       {
@@ -298,8 +314,16 @@ void *handle_client(void *arg)
    }
    //Decrease nr. active threads
    --nr_active_thread;
+   //Release mutex
+   pthread_mutex_unlock(&lock);
+   //free allocated resources
+   free(hostname);
+   memset(buffer, 0, MAX_BUFFER_LENGTH);
+   freeaddrinfo(servinfo);
    //Exit thread
    pthread_exit(NULL);
+   
+   return NULL;
 }
 
 void sig_handler(int signo)

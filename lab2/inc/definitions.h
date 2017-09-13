@@ -93,7 +93,7 @@ int parse_hostname(char* hostname, const char* buffer)
 		hostname[i-(colon-match+2)] = match[i];
 	}
 	//Zero-terminate
-	hostname[cr-colon-1] = 0;
+	hostname[cr-colon-2] = 0;
 	//Last extra-check
 	if (hostname)
 	{
