@@ -16,6 +16,7 @@
 
 #define HIGH 1
 #define LOW 0
+#define DEAD -1
 
 /*
    Maximum number of simultaneous requests that our proxy can handle
@@ -44,23 +45,6 @@ struct thread_data
    short priority;
    int cli_sock_fd;
 };
-
-/*
-Function: get_size(thread_t p*)
-In-param: Pointer to array of threads
-Returns: length of the array
-*/
-static unsigned get_size(pthread_t *p)
-{
-	unsigned c = 0;
-	if (!p) return c;
-	while (*p)
-	{
-		++c;
-		++p;
-	}
-	return 0;
-}
 
 int parse_hostname(char* hostname, const char* buffer)
 {
