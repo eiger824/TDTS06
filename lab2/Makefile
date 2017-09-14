@@ -1,11 +1,11 @@
 PROGRAM=proxy
 
 CFLAGS=-Wall -Wextra -Wpedantic -Iinc -DDEBUG_MODE
-LDFLAGS=-lpthread
+LDFLAGS=-lpthread -lm
 
 all: ${PROGRAM}
 
-${PROGRAM}: src/proxy.c inc/definitions.h
+${PROGRAM}: src/proxy.c inc/definitions.h inc/log.h
 	gcc ${CFLAGS} src/proxy.c ${LDFLAGS} -o ${PROGRAM}
 
 clean:

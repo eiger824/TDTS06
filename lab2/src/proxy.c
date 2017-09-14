@@ -12,19 +12,18 @@
 #include <netdb.h>
 #include <signal.h>
 #include "definitions.h"
+#include "log.h"
 
-//Socket descriptors, made global
-int sockfd, sockfdp, newsockfd, n, c, rv, ret;
-//to use with getaddrinfo() -> host discovery
-struct addrinfo hints, *servinfo, *p;
-char buffer[MAX_BUFFER_LENGTH];
-bool hex = false, omit = false;
-int signo;
-unsigned nr_active_thread = 0;
-//array of thread data structs
-struct thread_data thread_data_array[MAX_BUFFER_LENGTH];
-//Mutex thread
-pthread_mutex_t lock;
+int signo;                                               /* Signal nr to pass on to signal handler */
+bool hex = false, omit = false;                          /* Data in hex/dec, print data on/off */
+unsigned nr_active_threads = 0;                           /* Number of currently running threads */
+int sockfd;                                              /* Server socket fd (client-proxy side) */
+int newsockfd;                                           /* Client socket fd (new incoming
+                                                            connection) */
+int sockfdp;                                             /* Socket file descriptor (proxy-server
+                                                            side) */
+struct thread_data thread_data_array[MAX_BUFFER_LENGTH]; /* Array of thread data structs */
+pthread_mutex_t lock;                                    /* Mutex thread */
 
 //Functions
 void help(const char* prog);
@@ -34,10 +33,10 @@ void sig_handler(int signo);
 
 int main(int argc, char *argv[])
 {
-   int clilen, err;
+   int clilen, err, c;
    struct sockaddr_in serv_addr, cli_addr;
 
-
+   print("Hello main", INFO);
    //First of all, register our signal handler
    if (signal(SIGINT, sig_handler) == SIG_ERR)
    {
@@ -111,7 +110,7 @@ int main(int argc, char *argv[])
    }
 #endif
 
-   //Socket creation
+   //Socket creation (proxy, server-side)
    sockfd = socket(AF_INET, SOCK_STREAM, 0);
    if (sockfd < 0)
    {
@@ -140,14 +139,10 @@ int main(int argc, char *argv[])
       exit(1);
    }
 
-   //Init addrinfo struct
-   memset(&hints, 0, sizeof(hints));
-   hints.ai_family = AF_INET; // IPv4
-   hints.ai_socktype = SOCK_STREAM; //TCP
-
    //Get size of the structure
    clilen = sizeof(cli_addr);
 
+   //main loop
    printf("Starting server, listening on port %d ...\n", portno);
    while(1) {
       newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
@@ -159,10 +154,11 @@ int main(int argc, char *argv[])
       else
       {
          //Create a thread to handle the incoming connection
-         thread_data_array[nr_active_thread].thread_id = nr_active_thread;
-         thread_data_array[nr_active_thread].priority = HIGH;
-         err = pthread_create(&(threads[nr_active_thread]), NULL,
-                              &handle_client, &thread_data_array[nr_active_thread]);
+         thread_data_array[nr_active_threads].thread_id = nr_active_threads;
+         thread_data_array[nr_active_threads].priority = HIGH;
+         thread_data_array[nr_active_threads].cli_sock_fd = newsockfd;
+         err = pthread_create(&(threads[nr_active_threads]), NULL,
+                              &handle_client, &thread_data_array[nr_active_threads]);
          if (err != 0)
          {
             printf("Could not create thread :[%s]\n", strerror(err));
@@ -172,7 +168,8 @@ int main(int argc, char *argv[])
          {
             printf("Thread created successfully. Starting request handling\n");
             //add up counter
-            ++nr_active_thread;
+            ++nr_active_threads;
+            printf("# Active threads: %d\n", nr_active_threads);
          }
 #endif
       }
@@ -203,16 +200,28 @@ void *handle_client(void *arg)
 {
    //Lock the mutex thread
    pthread_mutex_lock(&lock);
+   
+   //***************** Variable declaration **************************
+   /*
+     The following variables are visible only in the local-scope
+     since we want them to be used individually in every thread
+    */
+   char buffer[MAX_BUFFER_LENGTH];             /* Buffer to use when reading/writing data */
+   int n, ret;                                 /* Return values (local) */
+   char *hostname = malloc(200);               /* Hostname to parse */
+   struct addrinfo hints, *servinfo, *p;       /* Use with getaddrinfo() -> host discovery */
+   struct thread_data *data;                   /* Thread data structure passed onto this thread
+                                                  function handler*/
+   //******************************************************************
 
-   //pthread_t id = pthread_self();
-   struct thread_data *data;
    data = (struct thread_data*) arg;
-   printf("Thread id: %d, priority: [%s]\n", data->thread_id,
-          (data->priority)?"HIGH":"LOW");
+   printf("Thread id: %d, priority: [%s], associated client socket fd: %d\n", data->thread_id,
+          (data->priority)?"HIGH":"LOW",
+      data->cli_sock_fd);
 
 
    bzero(buffer,MAX_BUFFER_LENGTH);
-   n = read(newsockfd,buffer,MAX_BUFFER_LENGTH-1);
+   n = read(data->cli_sock_fd,buffer,MAX_BUFFER_LENGTH-1);
    if (n < 0) perror("ERROR reading from socket");
 
 #ifdef DEBUG_MODE
@@ -221,7 +230,7 @@ void *handle_client(void *arg)
       print_data(buffer, hex);
 #endif
 
-   char *hostname = malloc(200);
+
    if ((ret = parse_hostname(hostname, buffer)) != -1)
    {
 #ifdef DEBUG_MODE
@@ -233,17 +242,32 @@ void *handle_client(void *arg)
       fprintf(stderr, "Error parsing hostname\n");
    }
 
+   //Init addrinfo struct
+   memset(&hints, 0, sizeof(hints));
+   hints.ai_family = AF_INET; // IPv4
+   hints.ai_socktype = SOCK_STREAM; //TCP
+
    //Get address info of the parsed hostname
-   if ((rv = getaddrinfo(hostname, "http", &hints, &servinfo)) != 0)
+   if ((ret = getaddrinfo(hostname, "http", &hints, &servinfo)) != 0)
    {
-      //fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
       char reason[200];
       strcpy(reason, "getaddrinfo(");
       strcat(reason, hostname);
       strcat(reason, "):");
-      strcat(reason, gai_strerror(rv));
+      strcat(reason, gai_strerror(ret));
       fprintf(stderr, "%s\n", reason);
-      exit(1);
+      //Then abort the operation
+      //Decrease nr. active threads
+      --nr_active_threads;
+      //Release mutex
+      pthread_mutex_unlock(&lock);
+      //free allocated resources
+      free(hostname);
+      memset(buffer, 0, MAX_BUFFER_LENGTH);
+      freeaddrinfo(servinfo);
+      //Exit thread
+      printf("Terminating thead-ID %d\n", data->thread_id);
+      pthread_exit(NULL);
    }
 
 
@@ -297,22 +321,21 @@ void *handle_client(void *arg)
    else
    {
       printf("(P <-- S)Received %d bytes from server:\n", n);
-      printf("(C <-- P)Proxy forwards data back to client\n");
       //Send it back to the client
-      if ((ret = write(newsockfd, buffer, n)) < 0)
+      if ((ret = write(data->cli_sock_fd, buffer, n)) < 0)
       {
          perror("Write");
       }
       else
       {
-         printf("Success! Wrote %d bytes back to the client\n", ret);
-         close(newsockfd);
+         printf("(C <-- P)Proxy forwarded data back to client (%d bytes)\n", ret);
+         close(data->cli_sock_fd);
       }
 #endif
 
    }
    //Decrease nr. active threads
-   --nr_active_thread;
+   --nr_active_threads;
    //Release mutex
    pthread_mutex_unlock(&lock);
    //free allocated resources
@@ -320,9 +343,8 @@ void *handle_client(void *arg)
    memset(buffer, 0, MAX_BUFFER_LENGTH);
    freeaddrinfo(servinfo);
    //Exit thread
+   printf("Terminating thead-ID %d\n", data->thread_id);
    pthread_exit(NULL);
-   
-   return NULL;
 }
 
 void sig_handler(int signo)

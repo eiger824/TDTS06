@@ -6,7 +6,7 @@
 /*
    Maximum number of bytes to write/read from the socket
    */
-#define MAX_BUFFER_LENGTH 10000
+#define MAX_BUFFER_LENGTH 100000
 
 /*
    Version of the current program
@@ -40,8 +40,9 @@ priority: priority of that thread (to be determined)
 
 struct thread_data
 {
-	int thread_id;
-	short priority;
+   int thread_id;
+   short priority;
+   int cli_sock_fd;
 };
 
 /*
