@@ -126,7 +126,7 @@ void print_data(char* buffer, unsigned hex)
 	{
 		for (i=0; i<strlen(buffer); ++i)
 		{
-			if (32 <= buffer[i] && buffer[i] <= 127)
+                   if (32 <= buffer[i]/* && buffer[i] <= 127*/) //signed char, always < 127
 			{
 				printf("%c", buffer[i]);
 			}

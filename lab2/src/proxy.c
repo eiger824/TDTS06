@@ -37,16 +37,22 @@ void reset_thread_struct(struct thread_data* ptr);
 
 int main(int argc, char *argv[])
 {
-  int clilen, err, c, i;
+  int clilen, err, c;
   struct sockaddr_in serv_addr, cli_addr;
-  
-  init_thread_array();
 
+  print(INFO, "Hello main!");
+  //init variable
+  gettimeofday(&time_before, NULL);
+  
   //First of all, register our signal handler
   if (signal(SIGINT, sig_handler) == SIG_ERR)
     {
       perror("Error registering signal handler");
     }
+  if (signal(SIGPIPE, sig_handler) == SIG_ERR)
+  {
+     perror("Error registering SIGPIPE");
+  }
 
   while ((c = getopt(argc,argv,"Hhm:op:v")) != -1)
     {
@@ -99,9 +105,9 @@ int main(int argc, char *argv[])
   printf("------------------------------------------------------\n");
 #endif
 
-  //Allocate memory for the threads
-  threads = malloc(MAX_SIM_REQUESTS * sizeof(pthread_t));
-
+  //Init the thread struct array with default values
+  init_thread_array();
+  
   //Initialize or mutex thread
   if ((err = pthread_mutex_init(&lock, NULL)) != 0)
     {
@@ -149,9 +155,10 @@ int main(int argc, char *argv[])
 
   //main loop
   printf("Starting server, listening on port %d ...\n", portno);
+  unsigned i;
   while(1)
     {
-      newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
+       newsockfd = accept((socklen_t)sockfd, (struct sockaddr *) &cli_addr, &clilen);
       if (newsockfd < 0)
 	{
 	  perror("ERROR on accept");
@@ -164,7 +171,7 @@ int main(int argc, char *argv[])
 	    {
 	      for (i=0; i<MAX_SIM_REQUESTS; ++i)
 		{
-		  if (thread_data_array[i].thread_id < 0)
+		  if (thread_data_array[i].thread_id == DEAD)
 		    {
 		      thread_data_array[i].thread_id = i;
 		      thread_data_array[i].priority = HIGH;
@@ -194,7 +201,7 @@ int main(int argc, char *argv[])
 	      //Sleep calling thread if no empty slots were found, i.e. if # of requests
 	      //is over the maximum. After a while (0.3), then try again to find a slot
 	      //in the thread structure list
-	      printf("No empty slots\n");
+              printf("No empty slots (nr active threads is %d)\n", nr_active_threads);
 	      usleep(1000);
 	    }
 	}
@@ -262,7 +269,7 @@ void *handle_client(void *arg)
     }
   else
     {
-      fprintf(stderr, "Error parsing hostname\n");
+       fprintf(stderr, "Error parsing hostname (buffer was [%s])\n", buffer);
     }
    
   //Init addrinfo struct
@@ -322,7 +329,7 @@ void *handle_client(void *arg)
   /*
     Write the request to the server
   */
-  if ((n = write(sockfdp, buffer, strlen(buffer))) < 0 )
+  if ((n = write(sockfdp, buffer, n)) < 0 )
     {
       perror("Write");
     }
@@ -333,31 +340,41 @@ void *handle_client(void *arg)
     }
 #endif
 
-  /*
-    Read response from server after cleaning sending buffer
-  */
-  memset(buffer, 0, MAX_BUFFER_LENGTH);
-  if ((n = read(sockfdp, buffer, MAX_BUFFER_LENGTH)) < 0)
-    {
-      perror("Error reading from socket");
-    }
+  while (1)
+  {
+     /*
+       Read response from server after cleaning sending buffer
+     */
+     memset(buffer, 0, MAX_BUFFER_LENGTH);
+     n = read(sockfdp, buffer, MAX_BUFFER_LENGTH);
+     if (n < 0)
+     {
+        perror("Error reading from socket");
+     }
+     else if (n == 0)
+     {
+        fprintf(stderr, "WARNING: Server closed the connection\n");
+        //close proxy-server socket
+        close(sockfdp);
+        break;
+     }
 #ifdef DEBUG_MODE
-  else
-    {
-      printf("(P <-- S)Received %d bytes from server:\n", n);
-      //Send it back to the client
-      if ((ret = write(data->cli_sock_fd, buffer, n)) < 0)
+     else
+     {
+        printf("(P <-- S)Received %d bytes from server:\n", n);
+        //Send it back to the client
+        if ((ret = write(data->cli_sock_fd, buffer, n)) < 0)
 	{
-	  perror("Write");
+           perror("Write");
 	}
-      else
+        else
 	{
-	  printf("(C <-- P)Proxy forwarded data back to client (%d bytes)\n", ret);
-	  close(data->cli_sock_fd);
+           printf("(C <-- P)Proxy forwarded data back to client (%d bytes)\n", ret);
 	}
 #endif
 
     }
+  } //while
   mutex_lock();
   --nr_active_threads;
   mutex_unlock();
@@ -383,12 +400,17 @@ void sig_handler(int signo)
       //And exit program
       exit(0);
     }
+  else if (signo == SIGPIPE)
+  {
+     fprintf(stderr, "CAUGHT SIGPIPE\n");
+  }
 }
 
 void mutex_lock()
 {
   pthread_mutex_lock(&lock);
 }
+
 void mutex_unlock()
 {
   pthread_mutex_unlock(&lock);
@@ -396,9 +418,12 @@ void mutex_unlock()
 
 void init_thread_array()
 {
-  unsigned i;
-  for (i=0; i<MAX_SIM_REQUESTS; ++i)
-    {
+   //Allocate memory for the threads
+   threads = malloc(MAX_SIM_REQUESTS * sizeof(pthread_t));
+   
+   unsigned i;
+   for (i=0; i<MAX_SIM_REQUESTS; ++i)
+   {
       thread_data_array[i].thread_id = DEAD;
       thread_data_array[i].priority = DEAD;
       thread_data_array[i].cli_sock_fd = DEAD;
@@ -410,5 +435,6 @@ void reset_thread_struct(struct thread_data* ptr)
 {
   ptr->thread_id = DEAD;
   ptr->priority = DEAD;
+  close(ptr->cli_sock_fd);
   ptr->cli_sock_fd = DEAD;
 }

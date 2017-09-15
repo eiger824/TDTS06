@@ -2,48 +2,44 @@
 #define LOG_H_
 
 #include <stdio.h>
+#include <string.h>
 #include <time.h>
-#include <stdlib.h>
-#include <math.h>
+#include <sys/time.h>
 
 #define ERROR 0
 #define INFO 1
 
-void print(const char* msg, unsigned level)
+struct timeval time_before, time_after, time_result;
+
+void print(unsigned level, const char* msg)
 {
-   time_t current_time;
-   char* c_time;
-   
-   current_time = time(NULL);
+   //update the time struct
+   gettimeofday(&time_after, NULL);
+   timersub(&time_before, &time_after, &time_result);
 
-   c_time = ctime(&current_time);
-   c_time[strlen(c_time)-1] = 0;
-
-   int millisec;
+   long int usecs = (long int)time_result.tv_usec;
+   time_t timer;
+   char time_str[26];
+   char *buffer = (char*) malloc(100000);
    struct tm* tm_info;
-   struct timeval tv;
 
-   gettimeofday(&tv, NULL);
+   time(&timer);
+   tm_info = localtime(&timer);
 
-   millisec = lrint(tv.tv_usec/1000.0); // Round to nearest millisec
-   if (millisec>=1000) { // Allow for rounding up to nearest second
-      millisec -=1000;
-      tv.tv_sec++;
-   }
+   strftime(time_str, 26, "%Y-%m-%d %H:%M:%S", tm_info);
+   strcpy(buffer, "[");
+   strcat(buffer, time_str);
+   strcat(buffer, "");
+   strcat(buffer, "] ");
+   strcat(buffer, msg);
+   strcat(buffer, "\n");
+
+   buffer[strlen(buffer)] = '\0';
    
-
-   char buf[strlen(msg) + 2];
-   strcpy(buf, msg);
-   strcat(buf, "\n");
-   buf[strlen(buf)] = 0;
-   if (level)
-   {
-      printf("[%s.%03d] %s", c_time,millisec, buf);
-   }
+   if (!level)
+      fprintf(stderr, buffer);
    else
-   {
-      fprintf(stderr, "[%s] %s", c_time, msg);
-   }
+      printf(buffer);
 }
 
 #endif /*LOG_H_*/
