@@ -13,6 +13,7 @@
 #include <signal.h>
 #include "definitions.h"
 #include "log.h"
+#include <sys/poll.h>
 
 int signo;                                               /* Signal nr to pass on to signal handler */
 bool hex = false, omit = false;                          /* Data in hex/dec, print data on/off */
@@ -20,8 +21,7 @@ unsigned nr_active_threads = 0;                           /* Number of currently
 int sockfd;                                              /* Server socket fd (client-proxy side) */
 int newsockfd;                                           /* Client socket fd (new incoming
                                                             connection) */
-int sockfdp;                                             /* Socket file descriptor (proxy-server
-                                                            side) */
+
 struct thread_data thread_data_array[MAX_BUFFER_LENGTH]; /* Array of thread data structs */
 pthread_mutex_t lock;                                    /* Mutex thread */
 
@@ -173,9 +173,7 @@ int main(int argc, char *argv[])
 		{
 		  if (thread_data_array[i].thread_id == DEAD)
 		    {
-		      thread_data_array[i].thread_id = i;
-		      thread_data_array[i].priority = HIGH;
-		      thread_data_array[i].cli_sock_fd = newsockfd;
+		      
 		      //Create a thread to handle the incoming connection
 		      err = pthread_create(&(threads[i]), NULL,
 					   &handle_client, &thread_data_array[i]);
@@ -186,7 +184,10 @@ int main(int argc, char *argv[])
 
 		      else
 			{
-			  mutex_lock();
+        thread_data_array[i].thread_id = i;
+        thread_data_array[i].priority = HIGH;
+        thread_data_array[i].cli_sock_fd = newsockfd;
+        mutex_lock();
 			  ++nr_active_threads;
 #ifdef DEBUG_MODE
 			  printf("Thread created successfully. Starting request handling\n");	    
@@ -202,7 +203,7 @@ int main(int argc, char *argv[])
 	      //is over the maximum. After a while (0.3), then try again to find a slot
 	      //in the thread structure list
               printf("No empty slots (nr active threads is %d)\n", nr_active_threads);
-	      usleep(1000);
+	      //usleep(10);
 	    }
 	}
     }
@@ -239,8 +240,10 @@ void *handle_client(void *arg)
   int n, ret;                                 /* Return values (local) */
   char *hostname = malloc(200);               /* Hostname to parse */
   struct addrinfo hints, *servinfo, *p;       /* Use with getaddrinfo() -> host discovery */
-  struct thread_data *data;                   /* Thread data structure passed onto this thread
-						 function handler*/
+  struct thread_data *data;                   /* Thread data structure passed onto this thread function handler*/
+  int sockfdp;                                /* Socket file descriptor (proxy-server side) */
+
+  struct pollfd ufds[2];                      /* Poll for events */
   //******************************************************************
 
   data = (struct thread_data*) arg;
@@ -248,10 +251,8 @@ void *handle_client(void *arg)
 	 (data->priority)?"HIGH":"LOW",
 	 data->cli_sock_fd);
 
-  mutex_lock();
   bzero(buffer,MAX_BUFFER_LENGTH);
   n = read(data->cli_sock_fd,buffer,MAX_BUFFER_LENGTH-1);
-  mutex_unlock();
   if (n < 0) perror("ERROR reading from socket");
 
 #ifdef DEBUG_MODE
@@ -288,16 +289,18 @@ void *handle_client(void *arg)
       fprintf(stderr, "%s\n", reason);
       //Then abort the operation
       //Decrease nr. active threads
-      mutex_lock();
-      --nr_active_threads;
-      //Release mutex
-      mutex_unlock();
+  
       //free allocated resources
       free(hostname);
       memset(buffer, 0, MAX_BUFFER_LENGTH);
       freeaddrinfo(servinfo);
       printf("Terminating thead-ID %d\n", data->thread_id);
+
+      mutex_lock();
+      --nr_active_threads;
+      //Release mutex
       reset_thread_struct(data);
+      mutex_unlock();      
       //Exit thread
       pthread_exit(NULL);
     }
@@ -340,51 +343,117 @@ void *handle_client(void *arg)
     }
 #endif
 
+  // Set info for the polling
+  ufds[0].fd = data->cli_sock_fd;
+  ufds[0].events = POLLIN;
+
+  ufds[1].fd = sockfdp;
+  ufds[1].events = POLLIN;
+
   while (1)
   {
-     /*
-       Read response from server after cleaning sending buffer
-     */
-     memset(buffer, 0, MAX_BUFFER_LENGTH);
-     n = read(sockfdp, buffer, MAX_BUFFER_LENGTH);
-     if (n < 0)
-     {
-        perror("Error reading from socket");
-     }
-     else if (n == 0)
-     {
-        fprintf(stderr, "WARNING: Server closed the connection\n");
-        //close proxy-server socket
-        close(sockfdp);
-        break;
-     }
-#ifdef DEBUG_MODE
-     else
-     {
-        printf("(P <-- S)Received %d bytes from server:\n", n);
-        //Send it back to the client
-        if ((ret = write(data->cli_sock_fd, buffer, n)) < 0)
-	{
-           perror("Write");
-	}
+    /*
+       Wait for data from either client or server
+    */
+    int rv = poll(ufds, 2, 0.0001);
+
+    if (rv == -1) {
+      perror("poll"); // error occurred in poll()
+    } 
+    else if (rv != 0) 
+    {
+      // check for events on client side:
+      if (ufds[0].revents & POLLIN) {
+        /*
+          Read response from server after cleaning sending buffer
+        */
+        memset(buffer, 0, MAX_BUFFER_LENGTH);
+
+        n = read(data->cli_sock_fd, buffer, MAX_BUFFER_LENGTH);
+        if (n < 0)
+        {
+            perror("Error reading from socket");
+        }
+        else if (n == 0)
+        {
+            fprintf(stderr, "WARNING: Client closed the connection\n");
+            //close proxy-server socket
+            close(sockfdp);
+            break;
+        }
+
         else
-	{
-           printf("(C <-- P)Proxy forwarded data back to client (%d bytes)\n", ret);
-	}
-#endif
+        {
+            #ifdef DEBUG_MODE
+            printf("(P <-- S)Received %d bytes from client:\n", n);
+            #endif
+            //Send it to server
+            if ((ret = write(sockfdp, buffer, n)) < 0)
+            {
+              perror("Write");
+            }
+            #ifdef DEBUG_MODE
+            else
+            {
+              printf("(C <-- P)Proxy forwarded data to server (%d bytes)\n", ret);
+            }
+            #endif
+        }        
+      }
+
+      // check for events on server side:
+      if (ufds[1].revents & POLLIN) {
+        /*
+          Read response from server after cleaning sending buffer
+        */
+        memset(buffer, 0, MAX_BUFFER_LENGTH);
+
+        n = read(sockfdp, buffer, MAX_BUFFER_LENGTH);
+        if (n < 0)
+        {
+            perror("Error reading from socket");
+        }
+        else if (n == 0)
+        {
+            fprintf(stderr, "WARNING: Server closed the connection\n");
+            //close proxy-server socket
+            close(sockfdp);
+            break;
+        }
+
+        else
+        {
+            #ifdef DEBUG_MODE
+            printf("(P <-- S)Received %d bytes from server:\n", n);
+            #endif
+            //Send it back to the client
+            if ((ret = write(data->cli_sock_fd, buffer, n)) < 0)
+            {
+              perror("Write");
+            }
+            #ifdef DEBUG_MODE
+            else
+            {
+              printf("(C <-- P)Proxy forwarded data back to client (%d bytes)\n", ret);
+            }
+            #endif
+        }
+    }
 
     }
   } //while
-  mutex_lock();
-  --nr_active_threads;
-  mutex_unlock();
+  
   //free allocated resources
   free(hostname);
   memset(buffer, 0, MAX_BUFFER_LENGTH);
   freeaddrinfo(servinfo);
   //Exit thread
   printf("Terminating thead-ID %d\n", data->thread_id);
+
+  mutex_lock();
+  --nr_active_threads;
   reset_thread_struct(data);
+  mutex_unlock();
   pthread_exit(NULL);
 }
 
@@ -395,7 +464,7 @@ void sig_handler(int signo)
       printf("\rReceived SIGINT, Exiting program ...\n");
       if (sockfd >= 0) close(sockfd);
       if (newsockfd >= 0) close(newsockfd);
-      if (sockfdp >= 0) close(sockfdp);
+      //if (sockfdp >= 0) close(sockfdp);
 
       //And exit program
       exit(0);

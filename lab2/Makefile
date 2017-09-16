@@ -1,6 +1,6 @@
 PROGRAM=proxy
 
-CFLAGS=-Wall -Wextra -Wpedantic -Iinc -DDEBUG_MODE
+CFLAGS=-Wall -Wextra -pedantic -Iinc -DDEBUG_MODE
 LDFLAGS=-lpthread -lm
 
 all: ${PROGRAM}
