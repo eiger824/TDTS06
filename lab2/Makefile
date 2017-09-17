@@ -1,7 +1,7 @@
-PROGRAM=proxy
+PROGRAM=netninny
 
 CFLAGS=-Wall -Wextra -pedantic -Iinc -DDEBUG_MODE
-LDFLAGS=-lpthread -lm
+LDFLAGS=-lpthread
 
 all: ${PROGRAM}
 
