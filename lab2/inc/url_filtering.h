@@ -50,4 +50,14 @@ void ub_url_to_lower(char* new_url, const char* url);
  */
 int ub_url_extract(char* url, const char* msg);
 
+
+/** Function:    ub_url_permitted
+    Description: This function encapsulates the above-defined functions,
+                 i.e., given an HTTP request it evaluates if the requested
+                 page is to be displayed to the client or not
+    @param msg:  Pointer to the HTTP request received from the client
+    Returns:     0 if the url is not forbidden, -1 otherwise
+ */
+int ub_url_permitted(const char* msg);
+
 #endif /* URL_FILTERING_H_ */

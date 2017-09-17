@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
 #include "url_filtering.h"
 
 const char* URL_BLACKLIST[] =
@@ -92,6 +91,32 @@ int ub_url_extract(char* url, const char* msg)
    //Last check
    if (url)
       return 0;
+   else
+      return -1;
+}
+
+int ub_url_permitted(const char* msg)
+{
+   char url[200];
+   char url_lowercase[200];
+   //1.) Extract URL from HTTP request
+   if (!ub_url_extract(url, msg))
+   {
+      //2.) Convert it to lowercase
+      ub_url_to_lower(url_lowercase, url);
+      //3.) Check if that URL is in the URL blacklist
+      if (!ub_url_in_blacklist(url_lowercase))
+         return 0;
+      else
+      {
+         //3.1) If not, check if it partially matches any
+         //topic keywords
+         if (!ub_url_matches(url_lowercase))
+            return 0;
+         else
+            return -1;
+      }
+   }
    else
       return -1;
 }
