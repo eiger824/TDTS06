@@ -43,10 +43,11 @@ void ub_url_to_lower(char* new_url, const char* url);
 /** Function:    ub_url_extract
     Description: Given an input buffer, extracted from the HTTP GET
                  header, this function extracts the url to fetch
+    @param url:  Pointer to store the parsed url
     @param msg:  Pointer to the message string containing the HTTP
                  request
-    Returns:     The extracted url
+    Returns:     0 if a valid string is parsed, -1 otherwise
  */
-char* ub_url_extract(const char* msg);
+int ub_url_extract(char* url, const char* msg);
 
 #endif /* URL_FILTERING_H_ */
