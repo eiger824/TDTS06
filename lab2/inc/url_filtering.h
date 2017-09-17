@@ -60,4 +60,17 @@ int ub_url_extract(char* url, const char* msg);
  */
 int ub_url_permitted(const char* msg);
 
+
+/** Function:    ub_send_redirect
+    Description: Depending on the output of the ub_url_permitted function,
+                 this function sends an HTTP redirect back to the client
+                 with an HTML file stating that the client is not allowed
+                 to display the requested contents
+    @param fd:   The socket file descriptor used by the client to make the
+                 HTTP request
+    Returns:     The number of written bytes to the client if the HTTP
+                 redirect operation was sucessful, -1 otherwise
+ */
+int ub_send_redirect(int fd);
+
 #endif /* URL_FILTERING_H_ */

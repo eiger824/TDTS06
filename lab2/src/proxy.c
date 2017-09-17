@@ -12,8 +12,10 @@
 #include <netdb.h>
 #include <signal.h>
 #include "definitions.h"
-#include "log.h"
 #include <sys/poll.h>
+
+#include "log.h"
+#include "url_filtering.h"
 
 int signo;                                               /* Signal nr to pass on to signal handler */
 bool hex = false, omit = false;                          /* Data in hex/dec, print data on/off */
@@ -40,6 +42,19 @@ int main(int argc, char *argv[])
   int clilen, err, c;
   struct sockaddr_in serv_addr, cli_addr;
 
+  /* char *str = "wWw.GöOGle.Esåöä"; */
+  /* char *new_str = (char*) malloc(200); */
+  /* ub_url_to_lower(new_str, str); */
+  /* printf("%s\n", new_str); */
+
+  /* char *str2 = "www.britneYSpearSroCK.se"; */
+  /* char *lowerstr2 = (char*)malloc(200); */
+  /* ub_url_to_lower(lowerstr2, str2); */
+  /* int res = ub_url_matches(lowerstr2); */
+  /* (!res) ? printf("MATCH!!\n") : printf("Fail\n"); */
+  
+  /* return -1; */
+  
   print(INFO, "Hello main!");
   //init variable
   gettimeofday(&time_before, NULL);
@@ -261,6 +276,50 @@ void *handle_client(void *arg)
     print_data(buffer, hex);
 #endif
 
+  /* char url[200]; */
+  /* if (!ub_url_extract(url, buffer)) */
+  /*    printf("Extracted URL: [%s]\n", url); */
+  /* else */
+  /*    fprintf(stderr, "Error parsing url\n"); */
+  /* exit(0); */
+
+  /* int res = ub_send_redirect(data->cli_sock_fd); */
+  /* exit(res); */
+  
+  //the requested URL is not permitted
+  mutex_lock();
+  if (ub_url_permitted(buffer) == -1)
+  {
+     printf("URL is banned!\n");
+     int nbytes;
+     if ((nbytes = ub_send_redirect(data->cli_sock_fd)) != -1)
+     {
+        printf("Success! Wrote %d bytes of HTTP redirection to client\n", nbytes);
+        mutex_unlock();
+     }
+     else
+     {
+        fprintf(stderr, "Something wrong happened when writing\n");
+        mutex_unlock();
+     }
+     free(hostname);
+     memset(buffer, 0, MAX_BUFFER_LENGTH);
+     freeaddrinfo(servinfo);
+     printf("Terminating thead-ID %d\n", data->thread_id);
+
+     mutex_lock();
+     --nr_active_threads;
+     //Release mutex
+     reset_thread_struct(data);
+     mutex_unlock();      
+     //Exit thread
+     pthread_exit(NULL);
+  }
+  else
+  {
+     printf("URL seems okay, forwarding request to server\n");
+     mutex_unlock();
+  }
 
   if ((ret = parse_hostname(hostname, buffer)) != -1)
     {
@@ -385,7 +444,7 @@ void *handle_client(void *arg)
         else
         {
             #ifdef DEBUG_MODE
-            printf("(P <-- S)Received %d bytes from client:\n", n);
+            printf("(C --> P) Received %d bytes from client:\n", n);
             #endif
             //Send it to server
             if ((ret = write(sockfdp, buffer, n)) < 0)
@@ -395,7 +454,7 @@ void *handle_client(void *arg)
             #ifdef DEBUG_MODE
             else
             {
-              printf("(C <-- P)Proxy forwarded data to server (%d bytes)\n", ret);
+              printf("(P --> S) Proxy forwarded data to server (%d bytes)\n", ret);
             }
             #endif
         }        
