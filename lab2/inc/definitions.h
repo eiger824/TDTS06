@@ -21,7 +21,7 @@
 /*
    Maximum number of simultaneous requests that our proxy can handle
    */
-unsigned MAX_SIM_REQUESTS = 10;
+unsigned MAX_SIM_REQUESTS = 50;
 
 /*
    Array with the created threads
