@@ -6,11 +6,13 @@ LDFLAGS=-lpthread
 all: ${PROGRAM}
 
 SRC=src/proxy.c \
+	src/filtering_common.c \
 	src/url_filtering.c \
     src/content_filtering.c
 
 INC=inc/log.h \
 	inc/definitions.h \
+	inc/filtering_common.h\
 	inc/url_filtering.h \
 	inc/content_filtering.h
 
