@@ -3,7 +3,12 @@ OBJDIR=obj
 PROGRAM=netninny
 PROGPATH=${BINDIR}/${PROGRAM}
 
-CFLAGS=-c -Wall -Wextra -pedantic -Iinc -DDEBUG_MODE
+MACRO=-DDEBUG_MODE
+ifeq ($(RELEASE),1)
+	MACRO=
+endif
+
+CFLAGS=-c -Wall -Wextra -pedantic -Iinc ${MACRO}
 LDFLAGS=-lpthread
 
 SRC=src/proxy.c \
@@ -32,6 +37,7 @@ ${BINDIR}:
 	test -d ${BINDIR} || mkdir ${BINDIR}
 
 ${PROGPATH}: ${OBJ}
+	rm -f ${PROGRAM}
 	gcc ${OBJ} ${LDFLAGS} -o ${PROGPATH}
 	ln -s ${PROGPATH} ${PROGRAM}
 

@@ -71,10 +71,13 @@ int main(int argc, char *argv[])
       perror("Error registering SIGPIPE");
    }
 
-   while ((c = getopt(argc,argv,"Hhm:op:v")) != -1)
+   while ((c = getopt(argc,argv,"dHhm:op:v")) != -1)
    {
       switch(c)
       {
+         case 'd':
+            log_set(1);
+            break;
          case 'h':
             help(argv[0]);
             exit(0);
@@ -112,7 +115,7 @@ int main(int argc, char *argv[])
    }
 
 #ifdef DEBUG_MODE
-   printf("Debug compilation flag:\t\tenabled\n");
+   printf("Debug compilation flag:\t\t%s\n", (log_get())?"enabled" : "disabled");
    printf("Selected port:\t\t\t%d\n", portno);
    printf("Maximum simultaneous requests:\t%d\n", MAX_SIM_REQUESTS);
    if (!omit)
@@ -232,6 +235,7 @@ void help(const char* prog)
 {
    printf("USAGE: %s [ARGS]\n", prog);
    printf("Args:\n");
+   printf("-d\tEnable debug mode\n");
    printf("-h\tShow this help and exit\n");
    printf("-H\tShow the HTTP data in hex format\n");
    printf("-m max  Specify the maximum number of simultaneous connections the proxy\n");

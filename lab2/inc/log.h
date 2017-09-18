@@ -12,8 +12,11 @@
 
 #define log_info(...)      print(INFO, __FILE__, __LINE__, __VA_ARGS__)
 #define log_error(...)     print(ERROR, __FILE__, __LINE__, __VA_ARGS__)
+#define log_set(X)         (((X) != 0 && (X) != 1) ? (LOG_ENABLED = 0) : (LOG_ENABLED = (X)))
+#define log_get()          (LOG_ENABLED)
 
 struct timeval time_before, time_after, time_result;
+static unsigned LOG_ENABLED = 0;
 
 void print(unsigned level,       /* level: ERROR (stderr) / INFO (stdout) */
            const char* filename, /* filename: The current file where the logging line is */
@@ -40,9 +43,12 @@ void print(unsigned level,       /* level: ERROR (stderr) / INFO (stdout) */
    usecs_str[sprintf(usecs_str, ".%06ld", usecs)] = '\0';
 
    if (!level)
-      fprintf(stderr, "[%s.%s] (%s:%d) ", time_str, usecs_str, filename, line);
+      fprintf(stderr, "[%s%s] (%s:%d) ", time_str, usecs_str, filename, line);
    else
-      printf("[%s%s] (%s:%d) ", time_str, usecs_str, filename, line);
+   {
+      if (LOG_ENABLED)
+         printf("[%s%s] (%s:%d) ", time_str, usecs_str, filename, line);
+   }
    
    va_start(args, msg);
    if (!level)
@@ -52,8 +58,11 @@ void print(unsigned level,       /* level: ERROR (stderr) / INFO (stdout) */
    }
    else
    {
-      vfprintf(stdout, msg, args);
-      printf("\n");
+      if (LOG_ENABLED)
+      {
+         vfprintf(stdout, msg, args);
+         printf("\n");
+      }
    }
    va_end(args);
    
