@@ -50,18 +50,22 @@ bool check_if_http_get(const char* buffer){
 	return buffer[0] == 'G';
 }
 
+bool check_if_http_connect(const char* buffer){
+	return buffer[0] == 'C';
+}
+
 int parse_hostname(char* hostname, const char* buffer)
 {
 	char *substring = "Host:";
 	char *match, *colon, *cr;
 	unsigned i;
 
-    /*
+
 	// Check if http get
-	if(!check_if_http_get(buffer)){
+	if(!check_if_http_get(buffer) && !check_if_http_connect(buffer))
+    {
 		return -2;
 	}
-    */
 
 	match = strstr(buffer, substring);
 	if (match != NULL)
@@ -93,7 +97,10 @@ int parse_hostname(char* hostname, const char* buffer)
 	//Last extra-check
 	if (hostname)
 	{
-		return 0;
+        if (check_if_http_get(buffer))
+		    return 1;
+        else
+            return 2;
 	}
 	else
 	{

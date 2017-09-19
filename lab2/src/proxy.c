@@ -35,7 +35,8 @@ void mutex_unlock();
 void init_thread_array();
 void reset_thread_struct(struct thread_data* ptr);
 
-int setup_host_connection(char *hostname, struct addrinfo *servinfo,  int *sockfdp);  
+int setup_host_get_connection(char *hostname, struct addrinfo *servinfo,  int *sockfdp);  
+int setup_host_connect_connection(char *hostname, struct addrinfo *servinfo,  int *sockfdp);  
 
 int main(int argc, char *argv[])
 {
@@ -245,6 +246,7 @@ void *handle_client(void *arg)
   struct addrinfo *servinfo;       /* Use with getaddrinfo() -> host discovery */
   struct thread_data *data;                   /* Thread data structure passed onto this thread function handler*/
   int sockfdp;                                /* Socket file descriptor (proxy-server side) */
+  int connection_type = 1;                    /* 1 for get, 2 for connect */
 
   struct pollfd ufds[2];                      /* Poll for events */
   //******************************************************************
@@ -265,7 +267,7 @@ void *handle_client(void *arg)
 #endif
 
 
-  if ((ret = parse_hostname(hostname, buffer)) == 0)
+  if ((ret = parse_hostname(hostname, buffer)) > 0)
   {
 #ifdef DEBUG_MODE
     printf("The hostname extracted is [%s]\n", hostname);
@@ -283,19 +285,59 @@ void *handle_client(void *arg)
 
   memcpy(current_hostname,hostname,strlen(hostname));
 
-  if (setup_host_connection(current_hostname, servinfo, &sockfdp) != 0 )
+  // http get
+  if (ret == 1)
   {
-    fprintf(stderr, "Error connecting to the host [%s]\n", hostname);
-    free(hostname);
-    free(current_hostname);
-    freeaddrinfo(servinfo);
-    memset(buffer,0,MAX_BUFFER_LENGTH);
-    mutex_lock();
-    --nr_active_threads;
-    reset_thread_struct(data);      
-    mutex_unlock();
-    pthread_exit(NULL);
+	  if (setup_host_get_connection(current_hostname, servinfo, &sockfdp) != 0 )
+	  {
+		fprintf(stderr, "Error[1] connecting to the host [%s]  HTTP GET\n", hostname);
+		free(hostname);
+		free(current_hostname);
+		freeaddrinfo(servinfo);
+		memset(buffer,0,MAX_BUFFER_LENGTH);
+		mutex_lock();
+		--nr_active_threads;
+		reset_thread_struct(data);      
+		mutex_unlock();
+		pthread_exit(NULL);
+	  }
+      connection_type = 1;
+      fprintf(stderr, "Set http get connection\n");
+  } else {
+	  if (setup_host_connect_connection(current_hostname, servinfo, &sockfdp) != 0 )
+	  {
+		fprintf(stderr, "Error[1] connecting to the host [%s]   HTTP CONNECT\n", hostname);
+		free(hostname);
+		free(current_hostname);
+		freeaddrinfo(servinfo);
+		memset(buffer,0,MAX_BUFFER_LENGTH);
+		mutex_lock();
+		--nr_active_threads;
+		reset_thread_struct(data);      
+		mutex_unlock();
+		pthread_exit(NULL);
+	  }	
+      // tell client
+      connection_type = 2;
+
+      //Tell client that connection established
+      if ((ret = write(data->cli_sock_fd, "HTTP/1.1 200 Connection established\r\n\r\n", 39)) < 0)
+      {
+        perror("Write");
+      }
+#ifdef DEBUG_MODE
+      else
+      {
+        printf("(C <-- P)Proxy forwarded data back to client (%d bytes)\n", ret);
+      }
+#endif
+
+      fprintf(stderr, "Set http connect connection\n");
+      // TODO clean this up
+      bzero(buffer,MAX_BUFFER_LENGTH);
+      n = 0;
   }
+
   /*
      Write the request to the server
      */
@@ -355,11 +397,12 @@ void *handle_client(void *arg)
 #endif
 
           // Check if host name has changed
-          if ((ret = parse_hostname(hostname, buffer)) == 0)
+          if ((ret = parse_hostname(hostname, buffer)) > 0)
           {
-            if (strcmp(hostname, current_hostname) != 0)
+            if (strcmp(hostname, current_hostname) != 0 || ret != connection_type)
             {
               // hostname has changed
+              // TODO maybe close the existing connection???
 #ifdef DEBUG_MODE
               printf("The hostname extracted is [%s] and current hostname is [%s]\n", hostname, current_hostname);
 #endif
@@ -367,19 +410,57 @@ void *handle_client(void *arg)
               memcpy(current_hostname,hostname,strlen(hostname));
 
               printf("New hostname is [%s]\n", current_hostname);
-              if (setup_host_connection(current_hostname, servinfo, &sockfdp) != 0 )
-              {
-                fprintf(stderr, "Error connecting to the host [%s]\n", hostname);
-                free(hostname);
-                free(current_hostname);
-                freeaddrinfo(servinfo);
-                memset(buffer,0,MAX_BUFFER_LENGTH);
-                mutex_lock();
-                --nr_active_threads;
-                reset_thread_struct(data);      
-                mutex_unlock();
-                pthread_exit(NULL);
-              }
+			  if (ret == 1)
+			  {
+				  if (setup_host_get_connection(current_hostname, servinfo, &sockfdp) != 0 )
+				  {
+					fprintf(stderr, "Error[1] connecting to the host [%s]  HTTP GET\n", hostname);
+					free(hostname);
+					free(current_hostname);
+					freeaddrinfo(servinfo);
+					memset(buffer,0,MAX_BUFFER_LENGTH);
+					mutex_lock();
+					--nr_active_threads;
+					reset_thread_struct(data);      
+					mutex_unlock();
+					pthread_exit(NULL);
+				  }
+                  connection_type = 1;
+				  fprintf(stderr, "Set http get connection\n");
+			  } else {
+				  if (setup_host_connect_connection(current_hostname, servinfo, &sockfdp) != 0 )
+				  {
+					fprintf(stderr, "Error[1] connecting to the host [%s]   HTTP CONNECT\n", hostname);
+					free(hostname);
+					free(current_hostname);
+					freeaddrinfo(servinfo);
+					memset(buffer,0,MAX_BUFFER_LENGTH);
+					mutex_lock();
+					--nr_active_threads;
+					reset_thread_struct(data);      
+					mutex_unlock();
+					pthread_exit(NULL);
+				  }	
+
+				  // tell client
+				  connection_type = 2;
+
+				  //Tell client that connection established
+				  
+				  if ((ret = write(data->cli_sock_fd, "HTTP/1.1 200 Connection established\r\n\r\n", 39)) < 0)
+				  {
+					perror("Write");
+				  }
+			#ifdef DEBUG_MODE
+				  else
+				  {
+					printf("(C <-- P)Proxy forwarded data back to client (%d bytes)\n", ret);
+				  }
+			#endif
+				  fprintf(stderr, "Set http connect connection\n");
+				  bzero(buffer,MAX_BUFFER_LENGTH);
+                  n = 0;
+			  }
              
               ufds[1].fd = sockfdp;
   			  ufds[1].events = POLLIN;
@@ -509,7 +590,7 @@ void reset_thread_struct(struct thread_data* ptr)
 }
 
 
-int setup_host_connection(char *hostname,  struct addrinfo *servinfo, int *sockfdp){
+int setup_host_get_connection(char *hostname,  struct addrinfo *servinfo, int *sockfdp){
   struct addrinfo hints, *p;
   int ret;
 
@@ -520,6 +601,53 @@ int setup_host_connection(char *hostname,  struct addrinfo *servinfo, int *sockf
 
   //Get address info of the parsed hostname
   if ((ret = getaddrinfo(hostname, "http", &hints, &servinfo)) != 0)
+  {
+    return -1;
+  }
+
+  // loop through all the results and connect to the first we can
+  for(p = servinfo; p != NULL; p = p->ai_next) 
+  {
+    if ((*sockfdp = socket(p->ai_family, p->ai_socktype,
+            p->ai_protocol)) == -1) 
+    {
+      perror("socket");
+      return -1;
+      //continue;
+    }
+
+    if (connect(*sockfdp, p->ai_addr, p->ai_addrlen) == -1) 
+    {
+      perror("connect");
+      //close(sockfdp);
+      return -1;
+      //break;
+    }
+
+    break; // if we get here, we must have connected successfully
+  }
+
+  if (p == NULL) 
+  {
+    // looped off the end of the list with no connection
+    perror("failed to connect");
+    return -1;
+  }
+
+  return 0;
+}
+
+int setup_host_connect_connection(char *hostname,  struct addrinfo *servinfo, int *sockfdp){
+  struct addrinfo hints, *p;
+  int ret;
+
+  //Init addrinfo struct
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_INET; // IPv4
+  hints.ai_socktype = SOCK_STREAM; //TCP
+
+  //Get address info of the parsed hostname
+  if ((ret = getaddrinfo(hostname, "https", &hints, &servinfo)) != 0)
   {
     return -1;
   }
