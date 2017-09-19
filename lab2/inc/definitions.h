@@ -56,10 +56,12 @@ int parse_hostname(char* hostname, const char* buffer)
 	char *match, *colon, *cr;
 	unsigned i;
 
+    /*
 	// Check if http get
 	if(!check_if_http_get(buffer)){
 		return -2;
 	}
+    */
 
 	match = strstr(buffer, substring);
 	if (match != NULL)

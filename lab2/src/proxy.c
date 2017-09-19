@@ -380,6 +380,9 @@ void *handle_client(void *arg)
                 mutex_unlock();
                 pthread_exit(NULL);
               }
+             
+              ufds[1].fd = sockfdp;
+  			  ufds[1].events = POLLIN;
             }
           }
 
