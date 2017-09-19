@@ -1,3 +1,5 @@
-proxy
+obj/*
+bin/*
+netninny
 *~
 #*
