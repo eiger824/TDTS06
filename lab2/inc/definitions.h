@@ -46,11 +46,20 @@ struct thread_data
    int cli_sock_fd;
 };
 
+bool check_if_http_get(const char* buffer){
+	return buffer[0] == 'G';
+}
+
 int parse_hostname(char* hostname, const char* buffer)
 {
 	char *substring = "Host:";
 	char *match, *colon, *cr;
 	unsigned i;
+
+	// Check if http get
+	if(!check_if_http_get(buffer)){
+		return -2;
+	}
 
 	match = strstr(buffer, substring);
 	if (match != NULL)
@@ -89,6 +98,8 @@ int parse_hostname(char* hostname, const char* buffer)
 		return -1;
 	}
 }
+
+
 
 void hexify(char* buffer)
 {
