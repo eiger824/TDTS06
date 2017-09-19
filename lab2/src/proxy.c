@@ -333,7 +333,7 @@ void *handle_client(void *arg)
    }
 
    // Update current hostname
-   memcpy(current_hostname,hostname,strlen(hostname));
+   memcpy(current_hostname,hostname,strlen(hostname)+1);
 
    // http get
    if (ret == 1)
@@ -460,8 +460,9 @@ void *handle_client(void *arg)
                               hostname, current_hostname);
 #endif
                      // Update the current hostname
-                     memcpy(current_hostname,hostname,strlen(hostname));
-
+                     memset(current_hostname, 0, 200);
+                     
+                     memcpy(current_hostname,hostname,strlen(hostname)+1);
                      log_info("New hostname is [%s]", current_hostname);
                      if (ret == 1)
                      {
