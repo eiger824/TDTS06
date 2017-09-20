@@ -290,7 +290,7 @@ void *handle_client(void *arg)
 #endif
 
    /************* Perform the URL-based filtering ********************/
-   mutex_lock();
+   //mutex_lock();
    if ((ret = ub_url_permitted(buffer)) == -1)
    {
       log_info("URL is banned!");
@@ -298,12 +298,12 @@ void *handle_client(void *arg)
       if ((nbytes = proxy_send_redirect(data->cli_sock_fd, URL_BASED)) != -1)
       {
          log_info("(C <== P)Success! Wrote %d bytes of HTTP redirection to client", nbytes);
-         mutex_unlock();
+         //mutex_unlock();
       }
       else
       {
          log_error("Something wrong happened when writing");
-         mutex_unlock();
+         //mutex_unlock();
       }
       free_resources(hostname, current_hostname, buffer, servinfo, data);
       //Exit thread
@@ -319,7 +319,7 @@ void *handle_client(void *arg)
    else
    {
       log_info("URL seems okay, forwarding request to server");
-      mutex_unlock();
+      //mutex_unlock();
    }
    /******************************************************************/
    if ((ret = parse_hostname(hostname, buffer)) > 0)

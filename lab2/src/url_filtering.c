@@ -86,6 +86,11 @@ int ub_url_extract(char* url, const char* msg)
    {
       init = 5;
    }
+   else if (msg[0] == 'C') // Connect
+   {
+      init = 8;
+   }
+
    //check if the url is absolute or relative
    if (msg[init] == '/')
    {
