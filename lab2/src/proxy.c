@@ -296,16 +296,6 @@ void *handle_client(void *arg)
          log_error("Something wrong happened when writing");
          mutex_unlock();
       }
-      /* free(hostname); */
-      /* memset(buffer, 0, MAX_BUFFER_LENGTH); */
-      /* freeaddrinfo(servinfo); */
-      /* log_info("Terminating thead-ID %d", tid); */
-
-      /* mutex_lock(); */
-      /* --nr_active_threads; */
-      /* //Release mutex */
-      /* reset_thread_struct(data); */
-      /* mutex_unlock();       */
       free_resources(hostname, current_hostname, buffer, servinfo, data);
       //Exit thread
       pthread_exit(NULL);
@@ -341,14 +331,6 @@ void *handle_client(void *arg)
       if (setup_host_get_connection(current_hostname, servinfo, &sockfdp) != 0 )
       {
          log_error("Error[1] connecting to the host [%s]  HTTP GET", hostname);
-         /* free(hostname); */
-         /* free(current_hostname); */
-         /* freeaddrinfo(servinfo); */
-         /* memset(buffer,0,MAX_BUFFER_LENGTH); */
-         /* mutex_lock(); */
-         /* --nr_active_threads; */
-         /* reset_thread_struct(data);       */
-         /* mutex_unlock(); */
          free_resources(hostname, current_hostname, buffer, servinfo, data);
          pthread_exit(NULL);
       }
@@ -358,14 +340,6 @@ void *handle_client(void *arg)
       if (setup_host_connect_connection(current_hostname, servinfo, &sockfdp) != 0 )
       {
          log_error("Error[1] connecting to the host [%s]   HTTP CONNECT", hostname);
-         /* free(hostname); */
-         /* free(current_hostname); */
-         /* freeaddrinfo(servinfo); */
-         /* memset(buffer,0,MAX_BUFFER_LENGTH); */
-         /* mutex_lock(); */
-         /* --nr_active_threads; */
-         /* reset_thread_struct(data);       */
-         /* mutex_unlock(); */
          free_resources(hostname, current_hostname, buffer, servinfo, data);
          pthread_exit(NULL);
       }	
@@ -469,14 +443,6 @@ void *handle_client(void *arg)
                         if (setup_host_get_connection(current_hostname, servinfo, &sockfdp) != 0 )
                         {
                            log_error("Error[1] connecting to the host [%s] HTTP GET", hostname);
-                           /* free(hostname); */
-                           /* free(current_hostname); */
-                           /* freeaddrinfo(servinfo); */
-                           /* memset(buffer,0,MAX_BUFFER_LENGTH); */
-                           /* mutex_lock(); */
-                           /* --nr_active_threads; */
-                           /* reset_thread_struct(data);       */
-                           /* mutex_unlock(); */
                            free_resources(hostname, current_hostname, buffer, servinfo, data);
                            pthread_exit(NULL);
                         }
@@ -486,15 +452,6 @@ void *handle_client(void *arg)
                         if (setup_host_connect_connection(current_hostname, servinfo, &sockfdp) != 0 )
                         {
                            log_error("Error[1] connecting to the host [%s] HTTP CONNECT", hostname);
-                           /* free(hostname); */
-                           /* free(current_hostname); */
-                           /* freeaddrinfo(servinfo); */
-                           /* memset(buffer,0,MAX_BUFFER_LENGTH); */
-                           /* mutex_lock(); */
-                           /* --nr_active_threads; */
-                           /* reset_thread_struct(data);       */
-                           /* mutex_unlock(); */
-
                            free_resources(hostname, current_hostname, buffer, servinfo, data);
                            pthread_exit(NULL);
                         }	
@@ -583,16 +540,6 @@ void *handle_client(void *arg)
    } //while
 
    //free allocated resources
-   /* free(hostname); */
-   /* memset(buffer, 0, MAX_BUFFER_LENGTH); */
-   /* freeaddrinfo(servinfo); */
-   /* //Exit thread */
-   /* log_info("Terminating thead-ID %d", tid); */
-
-   /* mutex_lock(); */
-   /* --nr_active_threads; */
-   /* reset_thread_struct(data); */
-   /* mutex_unlock(); */
    free_resources(hostname, current_hostname, buffer, servinfo, data);
    pthread_exit(NULL);
 }
