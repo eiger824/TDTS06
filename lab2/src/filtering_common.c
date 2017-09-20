@@ -2,7 +2,6 @@
 #include <unistd.h>
 #include <string.h>
 
-/* #include "definitions.h" */
 #include "filtering_common.h"
 
 const char* TOPIC_BLACKLIST[] =

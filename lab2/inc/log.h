@@ -6,6 +6,7 @@
 #include <string.h>
 #include <time.h>
 #include <sys/time.h>
+#include <pthread.h>
 
 #define ERROR 0
 #define INFO 1
@@ -14,15 +15,25 @@
 #define log_error(...)     print(ERROR, __FILE__, __LINE__, __VA_ARGS__)
 #define log_set(X)         (((X) != 0 && (X) != 1) ? (LOG_ENABLED = 0) : (LOG_ENABLED = (X)))
 #define log_get()          (LOG_ENABLED)
+#define log_init()         if (LOG_ENABLED) {           \
+      if (pthread_mutex_init(&log_lock, NULL) != 0) {   \
+         perror("Mutex init failed");                   \
+      } else {                                          \
+         log_info("Log mutex init success!");           \
+      }                                                 \
+   }
+
 
 struct timeval time_before, time_after, time_result;
 static unsigned LOG_ENABLED = 0;
+pthread_mutex_t log_lock;
 
 void print(unsigned level,       /* level: ERROR (stderr) / INFO (stdout) */
            const char* filename, /* filename: The current file where the logging line is */
            unsigned line,        /* line: The current line where the logging line is */
            const char* msg, ...) /* msg: Formated message with following (variadic) args */
 {
+   pthread_mutex_lock(&log_lock);
    //update the time struct
    gettimeofday(&time_after, NULL);
    timersub(&time_before, &time_after, &time_result);
@@ -68,6 +79,7 @@ void print(unsigned level,       /* level: ERROR (stderr) / INFO (stdout) */
    
    //and update time struct
    memcpy(&time_before, &time_after, sizeof(time_before));
+   pthread_mutex_unlock(&log_lock);
 }
 
 #endif /*LOG_H_*/

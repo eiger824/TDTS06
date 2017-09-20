@@ -75,12 +75,40 @@ void ub_url_to_lower(char* new_url, const char *url)
 
 int ub_url_extract(char* url, const char* msg)
 {
-   unsigned i;
-   for (i=4; msg[i] != ' '; ++i)
+   unsigned i, init;
+   char hostname[200];
+   parse_hostname(hostname, msg);
+   if (msg[0] == 'G') //GET
    {
-      url[i-4] = msg[i];
+      init = 4;
    }
-   url[i+1-4] = '\0';
+   else if (msg[0] == 'P') //POST
+   {
+      init = 5;
+   }
+   //check if the url is absolute or relative
+   if (msg[init] == '/')
+   {
+      //start by copying the hostname first
+      memcpy(url, hostname, strlen(hostname));
+      //then store the relative path in subpath
+      char subpath[200];
+      for (i = init; msg[i] != ' '; ++i)
+      {
+         subpath[i-init] = msg[i];
+      }
+      subpath[i-init] = '\0';
+      strcat(url, subpath);
+   }
+   else
+   {
+      for (i=init; msg[i] != ' '; ++i)
+      {
+         url[i-init] = msg[i];
+      }
+      url[i-init] = '\0';
+   }
+
    //Last check
    if (url)
       return 0;
@@ -90,6 +118,10 @@ int ub_url_extract(char* url, const char* msg)
 
 int ub_url_permitted(const char* msg)
 {
+   if (!strlen(msg))
+   {
+      return -2;
+   }
    char url[200];
    char url_lowercase[200];
    //1.) Extract URL from HTTP request

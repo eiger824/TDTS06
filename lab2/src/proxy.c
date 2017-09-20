@@ -123,6 +123,9 @@ int main(int argc, char *argv[])
    //Init the thread struct array with default values
    init_thread_array();
 
+   //Init the logging mutex
+   log_init();
+
    //Initialize or mutex thread
    if ((err = pthread_mutex_init(&lock, NULL)) != 0)
    {
@@ -206,8 +209,8 @@ int main(int argc, char *argv[])
                      mutex_lock();
                      ++nr_active_threads;
 #ifdef DEBUG_MODE
-                     printf("Thread created successfully. Starting request handling\n");	    
-                     printf("# Active threads: %d (position in array: %d)\n", nr_active_threads, i);
+                     log_info("Created thread. # Active threads: %d (position in array: %d)\n",
+                              nr_active_threads, i);
 #endif
                      mutex_unlock();
                   }
@@ -272,7 +275,13 @@ void *handle_client(void *arg)
 
    bzero(buffer,MAX_BUFFER_LENGTH);
    n = read(data->cli_sock_fd,buffer,MAX_BUFFER_LENGTH-1);
-   if (n < 0) perror("ERROR reading from socket");
+   if (n < 0)
+   {
+      perror("ERROR reading from socket");
+      //and cancel the operation
+      free_resources(hostname, current_hostname, buffer, servinfo, data);
+      pthread_exit(NULL);
+   }
 
 #ifdef DEBUG_MODE
    log_info("(C -> P )Client sends data:");
@@ -282,13 +291,13 @@ void *handle_client(void *arg)
 
    /************* Perform the URL-based filtering ********************/
    mutex_lock();
-   if (ub_url_permitted(buffer) == -1)
+   if ((ret = ub_url_permitted(buffer)) == -1)
    {
       log_info("URL is banned!");
       int nbytes;
       if ((nbytes = proxy_send_redirect(data->cli_sock_fd, URL_BASED)) != -1)
       {
-         log_info("Success! Wrote %d bytes of HTTP redirection to client", nbytes);
+         log_info("(C <== P)Success! Wrote %d bytes of HTTP redirection to client", nbytes);
          mutex_unlock();
       }
       else
@@ -296,6 +305,13 @@ void *handle_client(void *arg)
          log_error("Something wrong happened when writing");
          mutex_unlock();
       }
+      free_resources(hostname, current_hostname, buffer, servinfo, data);
+      //Exit thread
+      pthread_exit(NULL);
+   }
+   else if (ret == -2) //an empty buffer was received
+   {
+      log_error("ERROR: an empty buffer was received");
       free_resources(hostname, current_hostname, buffer, servinfo, data);
       //Exit thread
       pthread_exit(NULL);
@@ -314,11 +330,11 @@ void *handle_client(void *arg)
    }
    else if (ret == -1)
    {
-      log_error("Error parsing hostname (buffer was [%s])", buffer);
+      log_error("Error parsing hostname");
    }
    else if (ret == -2)
    {
-      log_error("Not a http get (buffer was [%s])", buffer);
+      log_error("Not an HTTP GET");
       // CLose everything
    }
 
@@ -335,7 +351,7 @@ void *handle_client(void *arg)
          pthread_exit(NULL);
       }
       connection_type = 1;
-      fprintf(stderr, "Set http get connection\n");
+      log_error("Set http get connection");
    } else {
       if (setup_host_connect_connection(current_hostname, servinfo, &sockfdp) != 0 )
       {
@@ -447,7 +463,7 @@ void *handle_client(void *arg)
                            pthread_exit(NULL);
                         }
                         connection_type = 1;
-                        fprintf(stderr, "Set http get connection\n");
+                        log_error("Set http get connection");
                      } else {
                         if (setup_host_connect_connection(current_hostname, servinfo, &sockfdp) != 0 )
                         {
@@ -522,17 +538,35 @@ void *handle_client(void *arg)
 #ifdef DEBUG_MODE
                log_info("(P <-- S)Received %d bytes from server:", n);
 #endif
-               //Send it back to the client
-               if ((ret = write(data->cli_sock_fd, buffer, n)) < 0)
+               // Perform content-based filtering
+               if (cb_page_permitted(buffer) == -1)
                {
-                  perror("Write");
+                  log_info("Page got a match in content. Sending redirect");
+                  int nbytes = proxy_send_redirect(data->cli_sock_fd, CONTENT_BASED);
+                  if (nbytes > 0)
+                     log_info("(C <== P)Succes! Wrote %d bytes of redirect to client!", nbytes);
+                  else
+                     log_error("Could not write redirect to client");
+
+                  //Free resources and exit
+                  free_resources(hostname, current_hostname, buffer, servinfo, data);
+                  pthread_exit(NULL);
                }
+               else //send it otherwise to the client
+               {
+                  log_info("Page's contents seem okey, forwarding to client");
+                  //Send it back to the client
+                  if ((ret = write(data->cli_sock_fd, buffer, n)) < 0)
+                  {
+                     perror("Write");
+                  }
 #ifdef DEBUG_MODE
-               else
-               {
-                  log_info("(C <-- P)Proxy forwarded data back to client (%d bytes)", ret);
-               }
+                  else
+                  {
+                     log_info("(C <-- P)Proxy forwarded data back to client (%d bytes)", ret);
+                  }
 #endif
+               }
             }
          }
 
