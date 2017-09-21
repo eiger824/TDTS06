@@ -33,6 +33,14 @@ pthread_t *threads;
 */
 int portno = 3422;
 
+typedef enum {
+   IDLE,
+   HALF_CONNECTION,
+   FULL_CONNECTION,
+   BUFFERING
+} STATE;
+
+
 /*
   Thread data structure
   thread_id: a numerical ID assigned to the working thread
@@ -46,12 +54,19 @@ struct thread_data
    int cli_sock_fd;
 };
 
-bool check_if_http_get(const char* buffer){
+bool check_if_http_get(const char* buffer)
+{
    return buffer[0] == 'G';
 }
 
-bool check_if_http_connect(const char* buffer){
+bool check_if_http_connect(const char* buffer)
+{
    return buffer[0] == 'C';
+}
+
+bool check_if_http_post(const char* buffer)
+{
+   return buffer[0] == 'P';
 }
 
 int parse_hostname(char* hostname, const char* buffer)
@@ -59,10 +74,15 @@ int parse_hostname(char* hostname, const char* buffer)
    char *substring = "Host:";
    char *match, *colon, *cr;
    unsigned i;
-
+   char first_line[500];
+   for (i=0; buffer[i] != '\r'; ++i)
+   {
+      first_line[i] = buffer[i];
+   }
+   first_line[i] = '\0';
 
    // Check if http get
-   if(!check_if_http_get(buffer) && !check_if_http_connect(buffer))
+   if(!check_if_http_get(first_line) && !check_if_http_connect(first_line))
    {
       return -2;
    }
@@ -99,8 +119,10 @@ int parse_hostname(char* hostname, const char* buffer)
    {
       if (check_if_http_get(buffer))
          return 1;
-      else
+      else if (check_if_http_connect(buffer))
          return 2;
+      else
+         return 3;
    }
    else
    {
@@ -162,5 +184,95 @@ void print_data(char* buffer, int n, unsigned hex)
       }
    }
    printf("==============================================\n");
+}
+
+int extract_http_info(const char* msg,
+                      char* hostname,
+                      int* method_type,
+                      int *content_length,
+                      int *content_type)
+{
+   char *token = "HTTP/";
+   char *match;
+   char first_line[500];
+   unsigned i, j;
+   int ret, index;
+   for (i=0; msg[i] != '\r'; ++i)
+   {
+      first_line[i] = msg[i];
+   }
+   first_line[i] = '\0';
+   match = strstr(first_line, token);
+
+   if (match != NULL) //HTTP header
+   {
+      if ((ret = parse_hostname(hostname, msg)) < 0)
+      {
+         //http response (hostname NOT updated)
+         char *length = "Content-length: ";
+         char *type = "Content-type: ";
+
+         //Content-length
+         match = strstr(msg, length);
+         if (match != NULL) //found a match
+         {
+            index = match - msg + strlen(length) + 1;
+            char len[20];
+            for (j=index; msg[j] != '\r'; ++j)
+            {
+               len[j-index] = msg[j];
+            }
+            len[j-index] = '\0';
+            *content_length = atoi(len);
+         }
+         else
+         {
+            *content_length = -1;
+            return -1;
+         }
+
+         //Content-type
+         match = strstr(msg, type);
+         if (match != NULL)
+         {
+            index = match - msg + strlen(type) + 1;
+            char typ[50];
+            for (j=index; msg[j] != '\r'; ++j)
+            {
+               typ[j-index] = msg[j];
+            }
+            typ[j-index] = '\0';
+            if (strstr(typ, "text") != NULL)
+            {
+               *content_type = 1;
+            }
+            else
+            {
+               *content_type = 0;
+            }
+         }
+         else
+         {
+            *content_type = -1;
+            return -1;
+         }
+
+         return 1; //response
+      }
+      else
+      {
+         //update method-type (hostname is already updated)
+         *method_type = ret;
+         *content_length = -1;
+         *content_type = -1;
+         return 0; //request
+      }
+   }
+   else //Not found, not HTTP header
+   {
+      *content_length = -1;
+      *content_type = -1;
+      return -1;
+   }
 }
 #endif /*DEFINITIONS_H_*/

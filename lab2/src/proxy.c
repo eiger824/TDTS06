@@ -260,10 +260,13 @@ void *handle_client(void *arg)
    struct addrinfo *servinfo;       /* Use with getaddrinfo() -> host discovery */
    struct thread_data *data;                   /* Thread data structure passed onto this thread function handler*/
    int sockfdp;                                /* Socket file descriptor (proxy-server side) */
-   int connection_type = 1;                    /* 1 for get, 2 for connect */
+   int connection_type = 1;                    /* 1 for get, 2 for connect, 3 POST */
+   int content_length;
+   int content_type;
 
    struct pollfd ufds[2];                      /* Poll for events */
    int tid;                                    /* Thread ID of the current thread */
+   STATE state = IDLE;
    //******************************************************************
 
    data = (struct thread_data*) arg;
@@ -273,8 +276,8 @@ void *handle_client(void *arg)
             (data->priority)?"HIGH":"LOW",
             data->cli_sock_fd);
 
-   bzero(buffer,MAX_BUFFER_LENGTH);
-   n = read(data->cli_sock_fd,buffer,MAX_BUFFER_LENGTH-1);
+   bzero(buffer, MAX_BUFFER_LENGTH);
+   n = read(data->cli_sock_fd, buffer, MAX_BUFFER_LENGTH-1);
    if (n < 0)
    {
       perror("ERROR reading from socket");
@@ -288,7 +291,16 @@ void *handle_client(void *arg)
    if (!omit)
       print_data(buffer, n, hex);
 #endif
-
+   
+   if ( extract_http_info(buffer,
+                          hostname,
+                          &connection_type, &content_length, &content_type) != 0)
+   {
+      perror("ERROR: not an HTTP header");
+      free_resources(hostname, current_hostname, buffer, servinfo, data);
+      pthread_exit(NULL);
+   }
+   state = HALF_CONNECTION;
    /************* Perform the URL-based filtering ********************/
    //mutex_lock();
    if ((ret = ub_url_permitted(buffer)) == -1)
@@ -322,27 +334,34 @@ void *handle_client(void *arg)
       //mutex_unlock();
    }
    /******************************************************************/
-   if ((ret = parse_hostname(hostname, buffer)) > 0)
+   /* if ((ret = parse_hostname(hostname, buffer)) > 0) */
+/*    { */
+/* #ifdef DEBUG_MODE */
+/*       log_info("The hostname extracted is [%s]", hostname); */
+/* #endif */
+/*    } */
+/*    else if (ret == -1) */
+/*    { */
+/*       log_error("Error parsing hostname"); */
+/*    } */
+/*    else if (ret == -2) */
+/*    { */
+/*       log_error("Not an HTTP GET"); */
+/*       // CLose everything */
+/*    } */
+   //check if empty hostname
+   if (!strlen(hostname))
    {
-#ifdef DEBUG_MODE
-      log_info("The hostname extracted is [%s]", hostname);
-#endif
-   }
-   else if (ret == -1)
-   {
-      log_error("Error parsing hostname");
-   }
-   else if (ret == -2)
-   {
-      log_error("Not an HTTP GET");
-      // CLose everything
+      log_error("An empty hostname was parsed");
+      free_resources(hostname, current_hostname, buffer, servinfo, data);
+      pthread_exit(NULL);
    }
 
    // Update current hostname
-   memcpy(current_hostname,hostname,strlen(hostname)+1);
+   memcpy(current_hostname, hostname, strlen(hostname)+1);
 
    // http get
-   if (ret == 1)
+   if (connection_type == 1)
    {
       if (setup_host_get_connection(current_hostname, servinfo, &sockfdp) != 0 )
       {
@@ -350,9 +369,10 @@ void *handle_client(void *arg)
          free_resources(hostname, current_hostname, buffer, servinfo, data);
          pthread_exit(NULL);
       }
-      connection_type = 1;
       log_error("Set http get connection");
-   } else {
+   }
+   else if (connection_type == 2 || connection_type == 3) //TODO: fix this
+   {
       if (setup_host_connect_connection(current_hostname, servinfo, &sockfdp) != 0 )
       {
          log_error("Error[1] connecting to the host [%s]   HTTP CONNECT", hostname);
@@ -538,6 +558,26 @@ void *handle_client(void *arg)
 #ifdef DEBUG_MODE
                log_info("(P <-- S)Received %d bytes from server:", n);
 #endif
+               if (state == HALF_CONNECTION)
+               {
+                  state = FULL_CONNECTION;
+                  if ( extract_http_info(buffer,
+                                         hostname,
+                                         &connection_type, &content_length, &content_type) != 1)
+                  {
+                     perror("ERROR: not an HTTP response");
+                     free_resources(hostname, current_hostname, buffer, servinfo, data);
+                     pthread_exit(NULL);
+                  }
+                  if (content_length <= 0)
+                  {
+                     log_error("ERROR: the content length was invalid (%d)", content_length);
+                     free_resources(hostname, current_hostname, buffer, servinfo, data);
+                     pthread_exit(NULL);
+                  }
+                  //switch state until "content_length" bytes have been read
+                  state = BUFFERING;
+               }
                // Perform content-based filtering
                if (cb_page_permitted(buffer) == -1)
                {
