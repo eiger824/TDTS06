@@ -209,8 +209,8 @@ int extract_http_info(const char* msg,
       if ((ret = parse_hostname(hostname, msg)) < 0)
       {
          //http response (hostname NOT updated)
-         char *length = "Content-length: ";
-         char *type = "Content-type: ";
+         char *length = "Content-Length: ";
+         char *type = "Content-Type: ";
 
          //Content-length
          match = strstr(msg, length);
