@@ -617,7 +617,8 @@ void *handle_client(void *arg)
             {
               // Perform content-based filtering after lowercasing buffer_server
                text_to_lower(lc_buffer_server, buffer_server, buffer_server_len);
-              if (cb_page_permitted(buffer_server) == -1)
+
+              if (cb_page_permitted(lc_buffer_server) == -1)
               {
                 log_info("Page got a match in content. Sending redirect");
                 int nbytes = proxy_send_redirect(data->cli_sock_fd, CONTENT_BASED);
