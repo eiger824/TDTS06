@@ -18,6 +18,7 @@
 #include "url_filtering.h"
 #include "content_filtering.h"
 #include "filtering_common.h"
+#include "utils.h"
 
 int signo;                                               /* Signal nr to pass on to signal handler */
 bool hex = false, omit = false;                          /* Data in hex/dec, print data on/off */
@@ -254,6 +255,7 @@ void *handle_client(void *arg)
      since we want them to be used individually in every thread
      */
   char buffer_server[MAX_BUFFER_LENGTH];             /* Buffer to use when reading/writing data */
+  char lc_buffer_server[MAX_BUFFER_LENGTH];          /* Lowercased buffer*/
   char buffer_client[MAX_BUFFER_LENGTH];
   char buffer_temp[MAX_BUFFER_LENGTH];
 
@@ -613,7 +615,8 @@ void *handle_client(void *arg)
             // Check if all content received
             if(buffer_server_len == content_length_s + http_header_len_s)
             {
-              // Perform content-based filtering
+              // Perform content-based filtering after lowercasing buffer_server
+               text_to_lower(lc_buffer_server, buffer_server, buffer_server_len);
               if (cb_page_permitted(buffer_server) == -1)
               {
                 log_info("Page got a match in content. Sending redirect");
