@@ -295,7 +295,7 @@ void *handle_client(void *arg)
   bzero(buffer_client, MAX_BUFFER_LENGTH);
   bzero(buffer_temp, MAX_BUFFER_LENGTH);
 
- 
+
   // Set info for the polling
   ufds[0].fd = data->cli_sock_fd;
   ufds[0].events = POLLIN;
@@ -341,40 +341,40 @@ void *handle_client(void *arg)
 #endif
 
 
-             // Put data to client buffer
-    for(i=0; i<n; i++)
-    {
-      buffer_client[buffer_client_len+i] = buffer_temp[i];
-    }
-    buffer_client[i] = '\0';
-    buffer_client_len += n;
+          // Put data to client buffer
+          for(i=0; i<n; i++)
+          {
+            buffer_client[buffer_client_len+i] = buffer_temp[i];
+          }
+          buffer_client[buffer_client_len+i] = '\0';
+          buffer_client_len += n;
 
 
 
-    // Get info from the http fields
-    if ( (ret = extract_http_info(buffer_client,
-            hostname,
-            &new_connection_type, &content_length_c, &content_type_c, &http_header_len_c)) == -2)
-    {
-      // Not an http header. If connection is established, forward. Else discard
-      if (state == IDLE)
-      {
-  buffer_client_len = 0;
-  bzero(buffer_client,MAX_BUFFER_LENGTH);
-      } 
-      else
-      {
-		received_http_header = 1;
-      }
+          // Get info from the http fields
+          if ( (ret = extract_http_info(buffer_client,
+                  hostname,
+                  &new_connection_type, &content_length_c, &content_type_c, &http_header_len_c)) == -2)
+          {
+            // Not an http header. If connection is established, forward. Else discard
+            if (state == IDLE)
+            {
+              buffer_client_len = 0;
+              bzero(buffer_client,MAX_BUFFER_LENGTH);
+            } 
+            else
+            {
+              received_http_header = 1;
+            }
 
-    }
-    else if (ret == 0)
-    {
-      // Success
-      received_http_header = 1;
+          }
+          else if (ret == 0)
+          {
+            // Success
+            received_http_header = 1;
 
-          // TODO do we need this bit now?????
-          // Check if host name has changed
+            // TODO do we need this bit now?????
+            // Check if host name has changed
 
             if (strcmp(hostname, current_hostname) != 0 || new_connection_type != connection_type)
             {
@@ -391,35 +391,35 @@ void *handle_client(void *arg)
               log_info("New hostname is [%s]", current_hostname);
 
 
-  /************* Perform the URL-based filtering ********************/
-  if ((ret = ub_url_permitted(buffer_client)) == -1)
-  {
-    log_info("URL is banned!");
-    int nbytes;
-    if ((nbytes = proxy_send_redirect(data->cli_sock_fd, URL_BASED)) != -1)
-    {
-      log_info("(C <== P)Success! Wrote %d bytes of HTTP redirection to client", nbytes);
-    }
-    else
-    {
-      log_error("Something wrong happened when writing");
-    }
-    free_resources(hostname, current_hostname, buffer_temp, servinfo, data);
-    //Exit thread
-    pthread_exit(NULL);
-  }
-  else if (ret == -2) //an empty buffer was received
-  {
-    log_error("ERROR: an empty buffer was received");
-    free_resources(hostname, current_hostname, buffer_temp, servinfo, data);
-    //Exit thread
-    pthread_exit(NULL);
-  }
-  else
-  {
-    log_info("URL seems okay, forwarding request to server");
-  }
-  /******************************************************************/
+              /************* Perform the URL-based filtering ********************/
+              if ((ret = ub_url_permitted(buffer_client)) == -1)
+              {
+                log_info("URL is banned!");
+                int nbytes;
+                if ((nbytes = proxy_send_redirect(data->cli_sock_fd, URL_BASED)) != -1)
+                {
+                  log_info("(C <== P)Success! Wrote %d bytes of HTTP redirection to client", nbytes);
+                }
+                else
+                {
+                  log_error("Something wrong happened when writing");
+                }
+                free_resources(hostname, current_hostname, buffer_temp, servinfo, data);
+                //Exit thread
+                pthread_exit(NULL);
+              }
+              else if (ret == -2) //an empty buffer was received
+              {
+                log_error("ERROR: an empty buffer was received");
+                free_resources(hostname, current_hostname, buffer_temp, servinfo, data);
+                //Exit thread
+                pthread_exit(NULL);
+              }
+              else
+              {
+                log_info("URL seems okay, forwarding request to server");
+              }
+              /******************************************************************/
 
 
 
@@ -434,6 +434,7 @@ void *handle_client(void *arg)
                   pthread_exit(NULL);
                 }
                 connection_type = 1;
+                state = HALF_CONNECTION;
                 log_error("Set http get connection");
               } else {
                 if (setup_host_connect_connection(current_hostname, servinfo, &sockfdp) != 0 )
@@ -462,9 +463,11 @@ void *handle_client(void *arg)
                 log_error("Set http connect connection");
                 bzero(buffer_client,MAX_BUFFER_LENGTH);
                 buffer_client_len = 0;
+                state = FULL_CONNECTION;
+                do_content_filtering = 0;
               }
 
-              state = HALF_CONNECTION;
+
 
               ufds[1].fd = sockfdp;
               ufds[1].events = POLLIN;
@@ -472,24 +475,24 @@ void *handle_client(void *arg)
           }
 
 
-		  if (received_http_header == 1)
+          if (received_http_header == 1)
           {
-          //Send it to server
-          if ((ret = write(sockfdp, buffer_client, buffer_client_len)) < 0)
-          {
-            perror("Write");
-          }
+            //Send it to server
+            if ((ret = write(sockfdp, buffer_client, buffer_client_len)) < 0)
+            {
+              perror("Write");
+            }
 
-          else
-          {
+            else
+            {
 #ifdef DEBUG_MODE
-            log_info("(C <-- P)Proxy forwarded data to server (%d bytes)", ret);
+              log_info("(C <-- P)Proxy forwarded data to server (%d bytes)", ret);
 #endif
-            bzero(buffer_client,MAX_BUFFER_LENGTH);
-                buffer_client_len = 0;
-           received_http_header = 0;
+              bzero(buffer_client,MAX_BUFFER_LENGTH);
+              buffer_client_len = 0;
+              received_http_header = 0;
 
-          }
+            }
 
           }
         }        
@@ -538,14 +541,13 @@ void *handle_client(void *arg)
 #endif
 
 
-            // Put data to client buffer
-            for(i=0; i<n; i++)
-            {
-              buffer_server[buffer_server_len+i] = buffer_temp[i];
-            }
-            buffer_server[i] = '\0';
-            buffer_server_len += n;
-
+          // Put data to client buffer
+          for(i=0; i<n; i++)
+          {
+            buffer_server[buffer_server_len+i] = buffer_temp[i];
+          }
+          buffer_server[buffer_server_len+i] = '\0';
+          buffer_server_len += n;
 
 
           if (state == HALF_CONNECTION)
@@ -564,12 +566,10 @@ void *handle_client(void *arg)
 
               if (content_length_s <= 0 || content_type_s < 0 )
               {
-                log_error("ERROR: the content length was invalid (%d)", content_length_s);
-                free_resources(hostname, current_hostname, buffer_server, servinfo, data);
-                pthread_exit(NULL);
+                log_error("Invalid content type or content length. Just forwarding data");
               }
 
-              if(content_type_s == 1 && connection_type == 1)
+              if(content_type_s == 1 && connection_type == 1 && content_length_s > 0)
               {
                 do_content_filtering = 1;
               } 
@@ -597,8 +597,8 @@ void *handle_client(void *arg)
 #ifdef DEBUG_MODE
               log_info("(C <-- P)Proxy forwarded data back to client (%d bytes)", ret);
 #endif
-                bzero(buffer_server,MAX_BUFFER_LENGTH);
-                buffer_server_len = 0;
+              bzero(buffer_server,MAX_BUFFER_LENGTH);
+              buffer_server_len = 0;
             }
 
 
@@ -628,7 +628,7 @@ void *handle_client(void *arg)
                 pthread_exit(NULL);
                 state = HALF_CONNECTION;
 
-                                bzero(buffer_server,MAX_BUFFER_LENGTH);
+                bzero(buffer_server,MAX_BUFFER_LENGTH);
                 buffer_server_len = 0;
                 do_content_filtering = 0;
 

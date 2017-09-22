@@ -197,17 +197,21 @@ int extract_http_info(const char* msg,
                       int *content_type,
                       int *http_header_length)
 {
+
    char *token = "HTTP/";
    char *match;
    char first_line[500];
    unsigned i, j;
    int ret, index;
-   for (i=0; msg[i] != '\r'; ++i)
+
+
+   // Safety check. HTTPS messages might be super weird
+   for (i=0; (msg[i] != '\r' && msg[i] != '\0' && msg[i] != '\n'); ++i)
    {
       first_line[i] = msg[i];
    }
    first_line[i] = '\0';
-   
+
    // Check if http header
    match = strstr(first_line, token);
 
