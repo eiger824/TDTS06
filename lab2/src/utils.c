@@ -128,7 +128,7 @@ void hexify(char* buffer, int n)
    //write the last indication
    for (unsigned j=0; j<3*(27-(i%27)); ++j)
       printf(" ");
-   printf("(bytes %d - %d)\n", start, i);
+   printf("(bytes %d - %d)", start, i);
 }
 
 void print_data(char* buffer, int n, unsigned hex)
@@ -160,6 +160,6 @@ void print_data(char* buffer, int n, unsigned hex)
          }
       }
    }
-   printf("=======================================");
+   printf("\n=======================================");
    printf("========================================\n");
 }
