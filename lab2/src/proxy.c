@@ -15,8 +15,8 @@
 
 #include "log.h"
 #include "definitions.h"
-#include "url_filtering.h"
-#include "content_filtering.h"
+#include "ubf.h"
+#include "cbf.h"
 #include "filtering_common.h"
 #include "utils.h"
 

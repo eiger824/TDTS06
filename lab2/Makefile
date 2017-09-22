@@ -12,21 +12,22 @@ CFLAGS=-c -Wall -Wextra -pedantic -Iinc ${MACRO}
 LDFLAGS=-lpthread
 
 SRC=src/filtering_common.c \
-	src/url_filtering.c \
-    src/content_filtering.c \
+	src/ubf.c \
+    src/cbf.c \
 	src/utils.c
 
 INC=inc/log.h \
 	inc/definitions.h \
 	inc/filtering_common.h\
-	inc/url_filtering.h \
-	inc/content_filtering.h \
-	inc/utils.h
+	inc/ubf.h \
+	inc/cbf.h \
+	inc/utils.h \
+	inc/http.h
 
 OBJ=${OBJDIR}/proxy.o \
 	${OBJDIR}/filtering_common.o \
-	${OBJDIR}/url_filtering.o \
-	${OBJDIR}/content_filtering.o \
+	${OBJDIR}/ubf.o \
+	${OBJDIR}/cbf.o \
 	${OBJDIR}/utils.o
 
 
@@ -52,13 +53,13 @@ ${OBJDIR}/filtering_common.o: ${SRC} \
 							  ${INC}
 	gcc ${CFLAGS} src/filtering_common.c -o ${OBJDIR}/filtering_common.o
 
-${OBJDIR}/url_filtering.o: ${SRC} \
+${OBJDIR}/ubf.o: ${SRC} \
 						   ${INC}
-	gcc ${CFLAGS} src/url_filtering.c -o ${OBJDIR}/url_filtering.o
+	gcc ${CFLAGS} src/ubf.c -o ${OBJDIR}/ubf.o
 
-${OBJDIR}/content_filtering.o: ${SRC} \
+${OBJDIR}/cbf.o: ${SRC} \
 							   ${INC}
-	gcc ${CFLAGS} src/content_filtering.c -o ${OBJDIR}/content_filtering.o
+	gcc ${CFLAGS} src/cbf.c -o ${OBJDIR}/cbf.o
 
 ${OBJDIR}/utils.o:
 	gcc ${CFLAGS} src/utils.c -o ${OBJDIR}/utils.o

@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "filtering_common.h"
-#include "url_filtering.h"
+#include "ubf.h"
 #include "utils.h"
 
 const char* URL_BLACKLIST[] =

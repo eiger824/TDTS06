@@ -24,4 +24,45 @@ void text_to_lower(char *text, int bytes);
  */
 void text_trim_whitespaces(char *text, int n);
 
+
+/** Function:        parse_hostname
+    Description:     Given an input buffer, it extracts the hostname contained
+                     in the field Host: of the HTTP request
+    @param hostname: Pointer to the string containing the buffer
+    @param buffer:   The input buffer to analyze
+    Returns:         -2 -> Neither an HTTP GET nor HTTP CONNECT, and @hostname
+                           remains intact
+                     -1 -> If no "Host:" entry was found in the request, and
+                           @hostname remains intact, or if it was actually found
+                           but an empty string was obtained
+                      1 -> If @buffer is an HTTP GET header, and @hostname has
+                           been found
+                      2 -> If @buffer is an HTTP CONNECT header, and @hostname has
+                           been found
+                      3 -> If @buffer is an HTTP POST header, and @hostname has
+                           been found
+ */
+int parse_hostname(char *hostname, const char* buffer);
+
+
+/** Function:      hexify
+    Description:   Given an input buffer and its length in bytes, it prints out
+                   its characters in hexadecimal format to the standard output
+    @param buffer: The input buffer to print
+    @param n:      The number of bytes @buffer has
+    Returns:       Nothing
+ */
+void hexify(char *buffer, int n);
+
+
+/** Function:      print_data
+    Description:   Given an input buffer and its length in bytes, it prints it to
+                   the standard output
+    @param buffer: The input buffer to print
+    @param n:      The number of bytes @buffer has
+    @param hex:    If the data should be printed out in hex
+    Returns:       Nothing
+ */
+void print_data(char* buffer, int n, unsigned hex);
+
 #endif /* UTILS_H_ */

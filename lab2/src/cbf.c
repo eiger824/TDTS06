@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "filtering_common.h"
-#include "content_filtering.h"
+#include "cbf.h"
 
 int cb_page_matches(const char* msg)
 {
