@@ -186,11 +186,16 @@ void print_data(char* buffer, int n, unsigned hex)
    printf("==============================================\n");
 }
 
+/* return: -2 if not http header
+           -1 if incomplete
+            0 if success
+  */
 int extract_http_info(const char* msg,
                       char* hostname,
                       int* method_type,
                       int *content_length,
-                      int *content_type)
+                      int *content_type,
+                      int *http_header_length)
 {
    char *token = "HTTP/";
    char *match;
@@ -202,10 +207,26 @@ int extract_http_info(const char* msg,
       first_line[i] = msg[i];
    }
    first_line[i] = '\0';
+   
+   // Check if http header
    match = strstr(first_line, token);
 
    if (match != NULL) //HTTP header
    {
+      // Check if the request is complete
+      char *header_end = "\r\n\r\n";
+      match = strstr(msg, header_end);
+
+
+      if (match == NULL)
+      {
+        return -1;
+      }
+      else
+      {
+        *http_header_length = match - msg + 4;
+      }
+      // Look for hostname
       if ((ret = parse_hostname(hostname, msg)) < 0)
       {
          //http response (hostname NOT updated)
@@ -216,7 +237,7 @@ int extract_http_info(const char* msg,
          match = strstr(msg, length);
          if (match != NULL) //found a match
          {
-            index = match - msg + strlen(length) + 1;
+            index = match - msg + strlen(length);
             char len[20];
             for (j=index; msg[j] != '\r'; ++j)
             {
@@ -228,14 +249,14 @@ int extract_http_info(const char* msg,
          else
          {
             *content_length = -1;
-            return -1;
+            //return -1;
          }
 
          //Content-type
          match = strstr(msg, type);
          if (match != NULL)
          {
-            index = match - msg + strlen(type) + 1;
+            index = match - msg + strlen(type);
             char typ[50];
             for (j=index; msg[j] != '\r'; ++j)
             {
@@ -254,10 +275,10 @@ int extract_http_info(const char* msg,
          else
          {
             *content_type = -1;
-            return -1;
+            //return -1;
          }
 
-         return 1; //response
+         return 0; //success
       }
       else
       {
@@ -272,7 +293,7 @@ int extract_http_info(const char* msg,
    {
       *content_length = -1;
       *content_type = -1;
-      return -1;
+      return -2;
    }
 }
 #endif /*DEFINITIONS_H_*/
