@@ -423,10 +423,6 @@ void *handle_client(void *arg)
               }
               /******************************************************************/
 
-
-
-
-
               if (new_connection_type == 1)
               {
                 if (setup_host_get_connection(current_hostname, servinfo, &sockfdp) != 0 )
@@ -499,22 +495,6 @@ void *handle_client(void *arg)
           }
         }        
       }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
       // check for events on server side:
       if (ufds[1].revents & POLLIN) {
@@ -619,8 +599,9 @@ void *handle_client(void *arg)
                //and triming all whitespaces
                text_to_lower(buffer_server, buffer_server_len);
                text_trim_whitespaces(buffer_server, buffer_server_len);
-               printf("\n\n\nReceived page:\n%s\n\n\n", buffer_server);
-
+               printf("\n\n\nReceived page:\n");
+               print_data(buffer_server, buffer_server_len, hex);
+               printf("\n\n\n");
               if (cb_page_permitted(buffer_server) == -1)
               {
                 log_info("Page got a match in content. Sending redirect");

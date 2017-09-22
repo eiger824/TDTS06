@@ -98,24 +98,44 @@ int parse_hostname(char* hostname, const char* buffer)
 void hexify(char* buffer, int n)
 {
    int i;
-   for (i=0; i<n-1; ++i)
+   unsigned start = 0;
+   for (i=0; i<n; ++i)
    {
-      if (buffer[i] == 0xd && buffer[i+1] == 0xa)
+      //check for end line
+      if (i > 0 && i % 27 == 0)
       {
-         printf(" (CR + NL)\n");
-         ++i;
+         printf("(bytes %d - %d)\n", start, i);
+         start = i + 1;
+      }
+      //caution with checking i+1 on last element
+      if (i < n-1)
+      {
+         if (buffer[i] == 0xd && buffer[i+1] == 0xa)
+         {
+            printf(" (CR + NL)\n");
+            ++i;
+         }
+      }
+      if (buffer[i] < 16)
+      {
+         printf("0%x ", buffer[i]);
       }
       else
       {
-         printf("%x%s", buffer[i],(i+1==strlen(buffer))?"":"-");
+         printf("%x ", buffer[i]);
       }
    }
+   //write the last indication
+   for (unsigned j=0; j<3*(27-(i%27)); ++j)
+      printf(" ");
+   printf("(bytes %d - %d)\n", start, i);
 }
 
 void print_data(char* buffer, int n, unsigned hex)
 {
    int i;
-   printf("====================Buffer====================\n");
+   printf("============================Buffer");
+   printf("(%d bytes)==================\n", n);
    if (hex)
    {
       hexify(buffer, n);
@@ -140,5 +160,6 @@ void print_data(char* buffer, int n, unsigned hex)
          }
       }
    }
-   printf("==============================================\n");
+   printf("=======================================");
+   printf("========================================\n");
 }

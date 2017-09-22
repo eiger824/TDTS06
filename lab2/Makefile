@@ -13,7 +13,7 @@ LDFLAGS=-lpthread
 
 SRC=src/filtering_common.c \
 	src/ubf.c \
-    src/cbf.c \
+	src/cbf.c \
 	src/utils.c
 
 INC=inc/log.h \
@@ -45,23 +45,24 @@ ${PROGPATH}: ${OBJ}
 	ln -s ${PROGPATH} ${PROGRAM}
 
 ${OBJDIR}/proxy.o: src/proxy.c \
-				   ${SRC} \
-				   ${INC}
+			${SRC} \
+			${INC}
 	gcc ${CFLAGS} src/proxy.c -o ${OBJDIR}/proxy.o
 
 ${OBJDIR}/filtering_common.o: ${SRC} \
-							  ${INC}
+				${INC}
 	gcc ${CFLAGS} src/filtering_common.c -o ${OBJDIR}/filtering_common.o
 
 ${OBJDIR}/ubf.o: ${SRC} \
-						   ${INC}
+		${INC}
 	gcc ${CFLAGS} src/ubf.c -o ${OBJDIR}/ubf.o
 
 ${OBJDIR}/cbf.o: ${SRC} \
-							   ${INC}
+		${INC}
 	gcc ${CFLAGS} src/cbf.c -o ${OBJDIR}/cbf.o
 
-${OBJDIR}/utils.o:
+${OBJDIR}/utils.o: inc/utils.h \
+		src/utils.c
 	gcc ${CFLAGS} src/utils.c -o ${OBJDIR}/utils.o
 
 clean:
