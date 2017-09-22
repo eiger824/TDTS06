@@ -254,18 +254,18 @@ void *handle_client(void *arg)
      The following variables are visible only in the local-scope
      since we want them to be used individually in every thread
      */
-  char buffer_server[MAX_BUFFER_LENGTH];             /* Buffer to use when reading/writing data */
-  char lc_buffer_server[MAX_BUFFER_LENGTH];          /* Lowercased buffer*/
+  char buffer_server[MAX_BUFFER_LENGTH];   /* Buffer to use when reading/writing data */
   char buffer_client[MAX_BUFFER_LENGTH];
   char buffer_temp[MAX_BUFFER_LENGTH];
 
-  int n, ret, i;                                 /* Return values (local) */
-  char *hostname = malloc(200);               /* Hostname to parse */
-  char *current_hostname = malloc(200);       /* Current Hostname  */
-  struct addrinfo *servinfo;       /* Use with getaddrinfo() -> host discovery */
-  struct thread_data *data;                   /* Thread data structure passed onto this thread function handler*/
-  int sockfdp = -1;                                /* Socket file descriptor (proxy-server side) */
-  int connection_type = -1;                    /* 1 for get, 2 for connect, 3 POST */
+  int n, ret, i;                           /* Return values (local) */
+  char *hostname = malloc(200);            /* Hostname to parse */
+  char *current_hostname = malloc(200);    /* Current Hostname  */
+  struct addrinfo *servinfo;               /* Use with getaddrinfo() -> host discovery */
+  struct thread_data *data;                /* Thread data structure passed onto this thread function
+                                              handler*/
+  int sockfdp = -1;                        /* Socket file descriptor (proxy-server side) */
+  int connection_type = -1;                /* 1 for get, 2 for connect, 3 POST */
   int new_connection_type = -1; 
   int content_length_s = -1;
   int content_type_s = -1;
@@ -277,8 +277,8 @@ void *handle_client(void *arg)
   int buffer_server_len = 0;
   int buffer_client_len = 0;
 
-  struct pollfd ufds[2];                      /* Poll for events */
-  int tid;                                    /* Thread ID of the current thread */
+  struct pollfd ufds[2];                   /* Poll for events */
+  int tid;                                 /* Thread ID of the current thread */
 
   int received_http_header = 0;
   int http_header_len_c = 0;
@@ -616,9 +616,12 @@ void *handle_client(void *arg)
             if(buffer_server_len == content_length_s + http_header_len_s)
             {
               // Perform content-based filtering after lowercasing buffer_server
-               text_to_lower(lc_buffer_server, buffer_server, buffer_server_len);
+               //and triming all whitespaces
+               text_to_lower(buffer_server, buffer_server_len);
+               text_trim_whitespaces(buffer_server, buffer_server_len);
+               printf("\n\n\nReceived page:\n%s\n\n\n", buffer_server);
 
-              if (cb_page_permitted(lc_buffer_server) == -1)
+              if (cb_page_permitted(buffer_server) == -1)
               {
                 log_info("Page got a match in content. Sending redirect");
                 int nbytes = proxy_send_redirect(data->cli_sock_fd, CONTENT_BASED);

@@ -65,7 +65,7 @@ void ub_url_to_lower(char* new_url, const char *url)
 {
    //Safe to provide strlen(url), since it is zero-terminated in
    //@ub_url_extract
-   text_to_lower(new_url, url, strlen(url));
+   text_to_lower(new_url, strlen(url));
 }
 
 int ub_url_extract(char* url, const char* msg)

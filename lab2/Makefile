@@ -11,8 +11,7 @@ endif
 CFLAGS=-c -Wall -Wextra -pedantic -Iinc ${MACRO}
 LDFLAGS=-lpthread
 
-SRC=src/proxy.c \
-	src/filtering_common.c \
+SRC=src/filtering_common.c \
 	src/url_filtering.c \
     src/content_filtering.c \
 	src/utils.c
@@ -45,29 +44,20 @@ ${PROGPATH}: ${OBJ}
 	ln -s ${PROGPATH} ${PROGRAM}
 
 ${OBJDIR}/proxy.o: src/proxy.c \
-				   inc/log.h \
-				   inc/url_filtering.h \
-				   inc/content_filtering.h \
-				   inc/filtering_common.h \
-				   inc/definitions.h \
-				   inc/utils.h
+				   ${SRC} \
+				   ${INC}
 	gcc ${CFLAGS} src/proxy.c -o ${OBJDIR}/proxy.o
 
-${OBJDIR}/filtering_common.o: inc/filtering_common.h \
-							  inc/definitions.h \
-							  inc/utils.h
+${OBJDIR}/filtering_common.o: ${SRC} \
+							  ${INC}
 	gcc ${CFLAGS} src/filtering_common.c -o ${OBJDIR}/filtering_common.o
 
-${OBJDIR}/url_filtering.o: inc/url_filtering.h \
-						   inc/filtering_common.h \
-						   inc/definitions.h \
-						   inc/utils.h
+${OBJDIR}/url_filtering.o: ${SRC} \
+						   ${INC}
 	gcc ${CFLAGS} src/url_filtering.c -o ${OBJDIR}/url_filtering.o
 
-${OBJDIR}/content_filtering.o: inc/content_filtering.h \
-							   inc/filtering_common.h \
-							   inc/definitions.h \
-							   inc/utils.h
+${OBJDIR}/content_filtering.o: ${SRC} \
+							   ${INC}
 	gcc ${CFLAGS} src/content_filtering.c -o ${OBJDIR}/content_filtering.o
 
 ${OBJDIR}/utils.o:
