@@ -45,9 +45,6 @@ void mutex_unlock();
 void init_thread_array();
 void reset_thread_struct(struct thread_data* ptr);
 
-int setup_host_get_connection(char *hostname, struct addrinfo *servinfo,  int *sockfdp);  
-int setup_host_connect_connection(char *hostname, struct addrinfo *servinfo,  int *sockfdp);  
-
 int main(int argc, char *argv[])
 {
   int err, c;
@@ -586,9 +583,6 @@ void *handle_client(void *arg)
 
           }
 
-
-
-
           if (state == FULL_CONNECTION && do_content_filtering > 0)
           {
 
@@ -726,99 +720,4 @@ void reset_thread_struct(struct thread_data* ptr)
   ptr->priority = DEAD;
   close(ptr->cli_sock_fd);
   ptr->cli_sock_fd = DEAD;
-}
-
-
-int setup_host_get_connection(char *hostname,  struct addrinfo *servinfo, int *sockfdp){
-  struct addrinfo hints, *p;
-  int ret;
-
-  //Init addrinfo struct
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_INET; // IPv4
-  hints.ai_socktype = SOCK_STREAM; //TCP
-
-  //Get address info of the parsed hostname
-  if ((ret = getaddrinfo(hostname, "http", &hints, &servinfo)) != 0)
-  {
-    return -1;
-  }
-
-  // loop through all the results and connect to the first we can
-  for(p = servinfo; p != NULL; p = p->ai_next) 
-  {
-    if ((*sockfdp = socket(p->ai_family, p->ai_socktype,
-            p->ai_protocol)) == -1) 
-    {
-      perror("socket");
-      return -1;
-      //continue;
-    }
-
-    if (connect(*sockfdp, p->ai_addr, p->ai_addrlen) == -1) 
-    {
-      perror("connect");
-      //close(sockfdp);
-      return -1;
-      //break;
-    }
-
-    break; // if we get here, we must have connected successfully
-  }
-
-  if (p == NULL) 
-  {
-    // looped off the end of the list with no connection
-    perror("failed to connect");
-    return -1;
-  }
-
-  return 0;
-}
-
-int setup_host_connect_connection(char *hostname,  struct addrinfo *servinfo, int *sockfdp){
-  struct addrinfo hints, *p;
-  int ret;
-
-  //Init addrinfo struct
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_INET; // IPv4
-  hints.ai_socktype = SOCK_STREAM; //TCP
-
-  //Get address info of the parsed hostname
-  if ((ret = getaddrinfo(hostname, "https", &hints, &servinfo)) != 0)
-  {
-    return -1;
-  }
-
-  // loop through all the results and connect to the first we can
-  for(p = servinfo; p != NULL; p = p->ai_next) 
-  {
-    if ((*sockfdp = socket(p->ai_family, p->ai_socktype,
-            p->ai_protocol)) == -1) 
-    {
-      perror("socket");
-      return -1;
-      //continue;
-    }
-
-    if (connect(*sockfdp, p->ai_addr, p->ai_addrlen) == -1) 
-    {
-      perror("connect");
-      //close(sockfdp);
-      return -1;
-      //break;
-    }
-
-    break; // if we get here, we must have connected successfully
-  }
-
-  if (p == NULL) 
-  {
-    // looped off the end of the list with no connection
-    perror("failed to connect");
-    return -1;
-  }
-
-  return 0;
 }

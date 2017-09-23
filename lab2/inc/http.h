@@ -3,6 +3,10 @@
 
 #include <stdbool.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
 
 /** Function:      check_if_http_get
     Description:   Given an input buffer, this function determines if it
@@ -45,7 +49,7 @@ bool check_if_http_post(const char* buffer)
                                setting either the hostname to connect to or the
                                length and type of the contents to receive. It also
                                calculates the length of the HTTP header.
-                               
+
     @param msg:                The input buffer to analyze
     @param hostname:           Pointer to the extracted hostname (if HTTP request)
     @param method_type:        Pointer to the updated specified the HTTP message type:
@@ -175,5 +179,121 @@ int extract_http_info(const char* msg,
       return -2;
    }
 }
+
+
+/** Function:        setup_host_get_connection
+    Description:     Given an input hostname, it attempts to establish a connection
+                     to the server specified in @servinfo through socket defined by
+                     sockfdp
+    @param hostname: Pointer to the string holding the hostname
+    @param servinfo: Pointer to the addrinfo struct containig the server information
+    @param sockfdp:  Socket descriptor to make the connection
+    Returns:         -1 upon error, 0 otherwise
+ */
+int setup_host_get_connection(char *hostname,  struct addrinfo *servinfo, int *sockfdp)
+{
+  struct addrinfo hints, *p;
+  int ret;
+
+  //Init addrinfo struct
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_INET; // IPv4
+  hints.ai_socktype = SOCK_STREAM; //TCP
+
+  //Get address info of the parsed hostname
+  if ((ret = getaddrinfo(hostname, "http", &hints, &servinfo)) != 0)
+  {
+    return -1;
+  }
+
+  // loop through all the results and connect to the first we can
+  for(p = servinfo; p != NULL; p = p->ai_next)
+  {
+    if ((*sockfdp = socket(p->ai_family, p->ai_socktype,
+            p->ai_protocol)) == -1)
+    {
+      perror("socket");
+      return -1;
+      //continue;
+    }
+
+    if (connect(*sockfdp, p->ai_addr, p->ai_addrlen) == -1)
+    {
+      perror("connect");
+      //close(sockfdp);
+      return -1;
+      //break;
+    }
+
+    break; // if we get here, we must have connected successfully
+  }
+
+  if (p == NULL)
+  {
+    // looped off the end of the list with no connection
+    perror("failed to connect");
+    return -1;
+  }
+
+  return 0;
+}
+
+
+/** Function:        setup_host_connect_connection
+    Description:     Given an input hostname, it attempts to establish a connection
+                     to the server specified in @servinfo through socket defined by
+                     sockfdp
+                     @param hostname: Pointer to the string holding the hostname
+                     @param servinfo: Pointer to the addrinfo struct containig the server information
+                     @param sockfdp:  Socket descriptor to make the connection
+                     Returns:         -1 upon error, 0 otherwise
+*/
+int setup_host_connect_connection(char *hostname,  struct addrinfo *servinfo, int *sockfdp)
+{
+   struct addrinfo hints, *p;
+   int ret;
+   //Init addrinfo struct
+   memset(&hints, 0, sizeof(hints));
+   hints.ai_family = AF_INET; // IPv4
+   hints.ai_socktype = SOCK_STREAM; //TCP
+
+   //Get address info of the parsed hostname
+   if ((ret = getaddrinfo(hostname, "http", &hints, &servinfo)) != 0)
+   {
+      return -1;
+   }
+
+   // loop through all the results and connect to the first we can
+   for(p = servinfo; p != NULL; p = p->ai_next)
+   {
+      if ((*sockfdp = socket(p->ai_family, p->ai_socktype,
+                             p->ai_protocol)) == -1)
+      {
+         perror("socket");
+         return -1;
+         //continue;
+      }
+
+      if (connect(*sockfdp, p->ai_addr, p->ai_addrlen) == -1)
+      {
+         perror("connect");
+         //close(sockfdp);
+         return -1;
+         //break;
+      }
+
+      break; // if we get here, we must have connected successfully
+   }
+
+   if (p == NULL)
+   {
+      // looped off the end of the list with no connection
+      perror("failed to connect");
+      return -1;
+   }
+
+   return 0;
+}
+
 
 #endif /* HTTP_H_ */
