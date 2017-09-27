@@ -19,6 +19,8 @@
 #include "content_filtering.h"
 #include "filtering_common.h"
 
+#define TIMEOUT_VALUE = 3000;
+
 int signo;                                               /* Signal nr to pass on to signal handler */
 bool hex = false, omit = false;                          /* Data in hex/dec, print data on/off */
 unsigned nr_active_threads = 0;                          /* Number of currently running threads */
@@ -282,6 +284,8 @@ void *handle_client(void *arg)
   int http_header_len_c = 0;
   int http_header_len_s = 0;
   STATE state = IDLE;
+
+  int timeout_val = -1;
   //******************************************************************
 
   data = (struct thread_data*) arg;
@@ -308,7 +312,14 @@ void *handle_client(void *arg)
     /*
        Wait for data from either client or server
        */
-    int rv = poll(ufds, 2, 0.0001);
+    int rv = poll(ufds, 2, timeout_val);
+
+    if (rv == 0)
+    {
+      // Do something
+      printf("Timed out \n");
+    }
+
 
     if (rv == -1) {
       perror("poll"); // error occurred in poll()
@@ -564,9 +575,18 @@ void *handle_client(void *arg)
             {
               state = FULL_CONNECTION;
 
-              if (content_length_s <= 0 || content_type_s < 0 )
+              if (content_type_s < 0 )
               {
                 log_error("Invalid content type or content length. Just forwarding data");
+              }
+
+              if (content_length_s <=0)
+              {
+                timeout_val = 3000;
+              }
+              else
+              {
+                timeout_val = -1;
               }
 
               if(content_type_s == 1 && connection_type == 1 && content_length_s > 0)
