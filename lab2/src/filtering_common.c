@@ -50,7 +50,7 @@ int proxy_send_redirect(int fd, TYPE type)
    strcat(redirect, content_length);
    strcat(redirect, "\r\n\n");
    strcat(redirect, error_file);
-   
+
    int n;
    if (fd)
    {

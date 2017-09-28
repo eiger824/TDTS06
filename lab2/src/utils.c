@@ -5,14 +5,21 @@
 #include "utils.h"
 #include "http.h"
 
+#define NORM "\x1B[0m"
+#define MARK "\x1B[31m"
+
+typedef unsigned char u8_t;
+
 void text_to_lower(char *text, int bytes)
 {
-   unsigned i;
+   int i;
+   u8_t c;   
    for (i=0; i<bytes; ++i)
    {
-       if (text[i] == 'å' || text[i] == 'Å') text[i] = 'a';
-       else if (text[i] == 'ö' || text[i] == 'Ö') text[i] = 'o';
-       else if (text[i] == 'ä' || text[i] == 'Ä') text[i] = 'a';
+      c = (u8_t)text[i];
+       if (c == 'Ã¥' || c == 'Ã…') text[i] = 'a';
+       else if (c == 'Ã¶' || c == 'Ã–') text[i] = 'o';
+       else if (c == 'Ã¤' || c == 'Ã„') text[i] = 'a';
        else text[i] = tolower(text[i]);
    }
    text[bytes] = '\0';
@@ -20,7 +27,7 @@ void text_to_lower(char *text, int bytes)
 
 void text_trim_whitespaces(char *text, int n)
 {
-   unsigned i;
+   int i;
    for (i=0; i<n; ++i)
    {
       if (text[i] == ' ' || text[i] == '\r' || text[i] == '\n')
@@ -97,38 +104,30 @@ int parse_hostname(char* hostname, const char* buffer)
 
 void hexify(char* buffer, int n)
 {
-   int i;
-   unsigned start = 0;
+   int i, j, start = 0, end = 0;
    for (i=0; i<n; ++i)
    {
-      //check for end line
-      if (i > 0 && i % 27 == 0)
+      if (i > 0 && i%27 == 0)
       {
-         printf("(bytes %d - %d)\n", start, i);
-         start = i + 1;
+         end = i;
+         printf(" (bytes %d - %d)\n", start, end);
+         start = end+1;
       }
-      //caution with checking i+1 on last element
-      if (i < n-1)
-      {
-         if (buffer[i] == 0xd && buffer[i+1] == 0xa)
-         {
-            printf(" (CR + NL)\n");
-            ++i;
-         }
-      }
-      if (buffer[i] < 16)
-      {
-         printf("0%x ", buffer[i]);
-      }
-      else
-      {
-         printf("%x ", buffer[i]);
-      }
+      printf("%s%s%x%s "
+             ,(buffer[i] == '\n' || buffer[i] == '\r')?MARK:""
+             ,((unsigned char)buffer[i]<16)?"0":""
+             ,(unsigned char)buffer[i]
+             ,(buffer[i] == '\n' || buffer[i] == '\r')?NORM:"");
+
    }
-   //write the last indication
-   for (unsigned j=0; j<3*(27-(i%27)); ++j)
-      printf(" ");
-   printf("(bytes %d - %d)", start, i);
+   if (i % 27 != 0)
+   {
+      for (j=0; j<3*(27-(i%27)); ++j)
+         printf(" ");
+      printf(" (bytes %d - %d)\n", start, i);
+   }
+   else
+      printf("\n");
 }
 
 void print_data(char* buffer, int n, unsigned hex)
@@ -156,10 +155,49 @@ void print_data(char* buffer, int n, unsigned hex)
          }
          else
          {
-            printf("%#x", buffer[i]);
+            printf("%#x ", (unsigned char)buffer[i]);
          }
       }
+      printf("\n");
    }
-   printf("\n=======================================");
+   printf("=======================================");
    printf("========================================\n");
+}
+
+
+char* get_hostname(char* hostname)
+{
+   unsigned i, hex=0;
+
+   for (i=0; i<strlen(hostname); ++i)
+   {
+      if (hostname[i] < 33 || hostname[i] > 126)
+      {
+         //Some weird character found - print it hexadecimal
+         hex = 1;
+         break;
+      }
+   }
+   char *hn;
+   if (hex)
+   {
+      hn = (char*) malloc(3*strlen(hostname));
+      strcpy(hn, "");
+      //Generate hex representation of hostname
+      for (i=0; i<strlen(hostname); ++i)
+      {
+         char tmp[4];
+         sprintf(tmp, "%x-", (unsigned char)hostname[i]);
+         tmp[3] = '\0';
+         strcat(hn, tmp);
+      }
+      hn[3*i-1] = '\0';
+   }
+   else
+   {
+      hn = (char*) malloc(strlen(hostname)+1);
+      memcpy(hn, hostname, strlen(hostname)+1);
+      hn[strlen(hostname)] = '\0';
+   }
+   return hn;
 }

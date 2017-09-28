@@ -6,7 +6,7 @@
 #include <time.h>
 #include <errno.h>
 #include <getopt.h>
-#include <sys/types.h> 
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
@@ -222,7 +222,7 @@ int main(int argc, char *argv[])
     }
   }
 
-  return 0; 
+  return 0;
 }
 
 void help(const char* prog)
@@ -245,13 +245,14 @@ void info()
 }
 
 void *handle_client(void *arg)
-{   
+{
   //***************** Variable declaration **************************
   /*
      The following variables are visible only in the local-scope
      since we want them to be used individually in every thread
      */
-  char buffer_server[MAX_BUFFER_LENGTH];   /* Buffer to use when reading/writing data */
+  char buffer_server[MAX_BUFFER_LENGTH];        /* Buffer to use when reading/writing data */
+  char buffer_server_conv[MAX_BUFFER_LENGTH];   /* Buffer to use when analyzing content */
   char buffer_client[MAX_BUFFER_LENGTH];
   char buffer_temp[MAX_BUFFER_LENGTH];
 
@@ -263,7 +264,7 @@ void *handle_client(void *arg)
                                               handler*/
   int sockfdp = -1;                        /* Socket file descriptor (proxy-server side) */
   int connection_type = -1;                /* 1 for get, 2 for connect, 3 POST */
-  int new_connection_type = -1; 
+  int new_connection_type = -1;
   int content_length_s = -1;
   int content_type_s = -1;
   int content_length_c = -1;
@@ -311,8 +312,8 @@ void *handle_client(void *arg)
 
     if (rv == -1) {
       perror("poll"); // error occurred in poll()
-    } 
-    else if (rv != 0) 
+    }
+    else if (rv != 0)
     {
       // check for events on client side:
       if (ufds[0].revents & POLLIN) {
@@ -360,7 +361,7 @@ void *handle_client(void *arg)
             {
               buffer_client_len = 0;
               bzero(buffer_client,MAX_BUFFER_LENGTH);
-            } 
+            }
             else
             {
               received_http_header = 1;
@@ -372,6 +373,9 @@ void *handle_client(void *arg)
             // Success
             received_http_header = 1;
 
+            log_info("Client sent data");
+            print_data(buffer_client, buffer_client_len, hex);
+
             // TODO do we need this bit now?????
             // Check if host name has changed
 
@@ -381,13 +385,13 @@ void *handle_client(void *arg)
               // TODO maybe close the existing connection???
 #ifdef DEBUG_MODE
               log_info("The hostname extracted is [%s] and current hostname is [%s]",
-                  hostname, current_hostname);
+                       get_hostname(hostname), get_hostname(current_hostname));
 #endif
               // Update the current hostname
               memset(current_hostname, 0, 200);
 
               memcpy(current_hostname,hostname,strlen(hostname)+1);
-              log_info("New hostname is [%s]", current_hostname);
+              log_info("New hostname is [%s]", get_hostname(current_hostname));
 
 
               /************* Perform the URL-based filtering ********************/
@@ -437,7 +441,7 @@ void *handle_client(void *arg)
                   log_error("Error[1] connecting to the host [%s] HTTP CONNECT", hostname);
                   free_resources(hostname, current_hostname, buffer_temp, servinfo, data);
                   pthread_exit(NULL);
-                }	
+                }
 
                 // tell client
                 connection_type = 2;
@@ -490,7 +494,7 @@ void *handle_client(void *arg)
             }
 
           }
-        }        
+        }
       }
 
       // check for events on server side:
@@ -551,7 +555,7 @@ void *handle_client(void *arg)
               if(content_type_s == 1 && connection_type == 1 && content_length_s > 0)
               {
                 do_content_filtering = 1;
-              } 
+              }
               else
               {
                 do_content_filtering = 0;
@@ -591,12 +595,15 @@ void *handle_client(void *arg)
             {
               // Perform content-based filtering after lowercasing buffer_server
                //and triming all whitespaces
-               text_to_lower(buffer_server, buffer_server_len);
-               text_trim_whitespaces(buffer_server, buffer_server_len);
+               memcpy(buffer_server_conv, buffer_server, buffer_server_len);
+
+               text_to_lower(buffer_server_conv, buffer_server_len);
+               text_trim_whitespaces(buffer_server_conv, buffer_server_len);
                printf("\n\n\nReceived page:\n");
-               print_data(buffer_server, buffer_server_len, hex);
+               print_data(buffer_server_conv, buffer_server_len, hex);
                printf("\n\n\n");
-              if (cb_page_permitted(buffer_server) == -1)
+               //Check if the converted page is suitable
+              if (cb_page_permitted(buffer_server_conv) == -1)
               {
                 log_info("Page got a match in content. Sending redirect");
                 int nbytes = proxy_send_redirect(data->cli_sock_fd, CONTENT_BASED);
@@ -615,7 +622,7 @@ void *handle_client(void *arg)
                 do_content_filtering = 0;
 
               }
-              else //send it otherwise to the client
+              else //send it (unconverted)
               {
                 log_info("Page's contents seem okey, forwarding to client");
                 //Send it back to the client

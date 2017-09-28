@@ -143,7 +143,7 @@ int ub_url_permitted(const char* msg)
             return -1;
          }
          else
-         {     
+         {
             return 0;
          }
       }

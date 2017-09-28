@@ -65,4 +65,14 @@ void hexify(char *buffer, int n);
  */
 void print_data(char* buffer, int n, unsigned hex);
 
+
+/** Function:        get_hostname
+    Description:     Given an input hostname, it determines whether its characters
+                     are printable and prints it in plain text if they are, or in
+                     its hexadecimal representation if not
+    @param hostname: A pointer to the hostname to analyze
+    Returns:         A pointer to the string containing the result of the operation
+*/
+char* get_hostname(char* hostname);
+
 #endif /* UTILS_H_ */
