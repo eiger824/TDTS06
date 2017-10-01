@@ -308,6 +308,7 @@ void *handle_client(void *arg)
     /*
        Wait for data from either client or server
        */
+    // TODO put timeout here
     int rv = poll(ufds, 2, 0.0001);
 
     if (rv == -1) {
@@ -364,6 +365,7 @@ void *handle_client(void *arg)
             }
             else
             {
+              // TODO dont think we need this. Rather check connection type
               received_http_header = 1;
             }
 
@@ -376,9 +378,7 @@ void *handle_client(void *arg)
             log_info("Client sent data");
             print_data(buffer_client, buffer_client_len, hex);
 
-            // TODO do we need this bit now?????
             // Check if host name has changed
-
             if (strcmp(hostname, current_hostname) != 0 || new_connection_type != connection_type)
             {
               // hostname has changed
@@ -395,6 +395,7 @@ void *handle_client(void *arg)
 
 
               /************* Perform the URL-based filtering ********************/
+			  // TODO seems url based filtering not happening
               if ((ret = ub_url_permitted(buffer_client)) == -1)
               {
                 log_info("URL is banned!");
@@ -547,6 +548,7 @@ void *handle_client(void *arg)
             {
               state = FULL_CONNECTION;
 
+              // TODO support timeout
               if (content_length_s <= 0 || content_type_s < 0 )
               {
                 log_error("Invalid content type or content length. Just forwarding data");
@@ -600,6 +602,7 @@ void *handle_client(void *arg)
                text_to_lower(buffer_server_conv, buffer_server_len);
                text_trim_whitespaces(buffer_server_conv, buffer_server_len);
                printf("\n\n\nReceived page:\n");
+               // TODO take the actual length
                print_data(buffer_server_conv, buffer_server_len, hex);
                printf("\n\n\n");
                //Check if the converted page is suitable

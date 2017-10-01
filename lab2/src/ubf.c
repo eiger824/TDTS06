@@ -61,11 +61,11 @@ int ub_url_matches(const char* url)
    return -1;
 }
 
-void ub_url_to_lower(char* new_url, const char *url)
+void ub_url_to_lower(char* url)
 {
    //Safe to provide strlen(url), since it is zero-terminated in
    //@ub_url_extract
-   text_to_lower(new_url, strlen(url));
+   text_to_lower(url, strlen(url));
 }
 
 int ub_url_extract(char* url, const char* msg)
@@ -123,14 +123,14 @@ int ub_url_permitted(const char* msg)
       return -2;
    }
    char url[200];
-   char url_lowercase[200];
+
    //1.) Extract URL from HTTP request
    if (!ub_url_extract(url, msg))
    {
       //2.) Convert it to lowercase
-      ub_url_to_lower(url_lowercase, url);
+      ub_url_to_lower(url);
       //3.) Check if that URL is in the URL blacklist
-      if (!ub_url_in_blacklist(url_lowercase))
+      if (!ub_url_in_blacklist(url))
       {
          return 0;
       }
@@ -138,7 +138,7 @@ int ub_url_permitted(const char* msg)
       {
          //3.1) If not, check if it partially matches any
          //topic keywords
-         if (!ub_url_matches(url_lowercase))
+         if (!ub_url_matches(url))
          {
             return -1;
          }

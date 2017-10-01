@@ -29,11 +29,10 @@ int ub_url_matches(const char* url);
                     lower case (applies only [A-Z]), and it case of
                     finding non-english characters (e.g. �,�,�) it
                     converts them to its english-equivalent(a,o,a)
-    @param new_url: Pointer to store the new url
-    @param url:     Pointer to the url string to check
+    @param url:     Pointer to the url string. Conversion is done inplace
     Returns:        nothing
  */
-void ub_url_to_lower(char* new_url, const char* url);
+void ub_url_to_lower(char* url);
 
 
 /** Function:    ub_url_extract
