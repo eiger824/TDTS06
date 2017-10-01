@@ -281,6 +281,9 @@ void *handle_client(void *arg)
   int received_http_header = 0;
   int http_header_len_c = 0;
   int http_header_len_s = 0;
+
+  int timeout_val = -1;
+ 
   STATE state = IDLE;
   //******************************************************************
 
@@ -309,7 +312,7 @@ void *handle_client(void *arg)
        Wait for data from either client or server
        */
     // TODO put timeout here
-    int rv = poll(ufds, 2, 0.0001);
+    int rv = poll(ufds, 2, timeout_val);
 
     if (rv == -1) {
       perror("poll"); // error occurred in poll()
@@ -554,16 +557,23 @@ void *handle_client(void *arg)
                 log_error("Invalid content type or content length. Just forwarding data");
               }
 
-              if(content_type_s == 1 && connection_type == 1 && content_length_s > 0)
+              if(content_type_s == 1 && connection_type == 1)
               {
                 do_content_filtering = 1;
+                if (content_length_s > 0)
+                {
+                	timeout_val = -1;
+                }
+    			else
+				{
+					timeout_val = MAX_TIMEOUT_VAL;
+				}
               }
               else
               {
                 do_content_filtering = 0;
+                timeout_val = -1;
               }
-
-
             }
             //switch state until "content_length" bytes have been read
           }
@@ -601,10 +611,10 @@ void *handle_client(void *arg)
 
                text_to_lower(buffer_server_conv, buffer_server_len);
                text_trim_whitespaces(buffer_server_conv, buffer_server_len);
-               printf("\n\n\nReceived page:\n");
+
                // TODO take the actual length
                print_data(buffer_server_conv, buffer_server_len, hex);
-               printf("\n\n\n");
+
                //Check if the converted page is suitable
               if (cb_page_permitted(buffer_server_conv) == -1)
               {
@@ -633,10 +643,11 @@ void *handle_client(void *arg)
                 {
                   perror("Write");
                 }
-#ifdef DEBUG_MODE
                 else
                 {
+#ifdef DEBUG_MODE
                   log_info("(C <-- P)Proxy forwarded data back to client (%d bytes)", ret);
+#endif
                   state = HALF_CONNECTION;
                   do_content_filtering = 0;
                   bzero(buffer_server,MAX_BUFFER_LENGTH);
@@ -644,7 +655,6 @@ void *handle_client(void *arg)
 
                   // TODO reset everything
                 }
-#endif
               }
 
             }
@@ -657,6 +667,29 @@ void *handle_client(void *arg)
         }
       }
 
+    } 
+    else if (rv == 0)
+    {
+#ifdef DEBUG_MODE
+        log_error("Timeout. Forwarding data");
+#endif
+    	// timeout
+        if ((ret = write(data->cli_sock_fd, buffer_server, buffer_server_len)) < 0)
+        {
+        	perror("Write");
+        }
+
+        else
+        {
+#ifdef DEBUG_MODE
+        	log_info("(C <-- P)Proxy forwarded data back to client (%d bytes)", ret);
+#endif
+            timeout_val = -1;
+            state = HALF_CONNECTION;
+            do_content_filtering = 0;
+            bzero(buffer_server,MAX_BUFFER_LENGTH);
+            buffer_server_len = 0;
+        }
     }
   } //while
 

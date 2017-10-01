@@ -20,6 +20,11 @@
 #define LOW 0
 #define DEAD -1
 
+/*
+  Maximum number of milliseconds proxy should wait for server to reply
+*/
+#define MAX_TIMEOUT_VAL 5000
+
 
 /** Name: MAX_SIM_REQUESTS
     Description: Maximum number of simultaneous requests that our
