@@ -192,6 +192,7 @@ int extract_http_info(const char* msg,
  */
 int setup_host_get_connection(char *hostname,  struct addrinfo *servinfo, int *sockfdp)
 {
+ 
   struct addrinfo hints, *p;
   int ret;
 
@@ -258,7 +259,7 @@ int setup_host_connect_connection(char *hostname,  struct addrinfo *servinfo, in
    hints.ai_socktype = SOCK_STREAM; //TCP
 
    //Get address info of the parsed hostname
-   if ((ret = getaddrinfo(hostname, "http", &hints, &servinfo)) != 0)
+   if ((ret = getaddrinfo(hostname, "https", &hints, &servinfo)) != 0)
    {
       return -1;
    }
