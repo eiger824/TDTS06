@@ -381,21 +381,8 @@ void *handle_client(void *arg)
                   print_data(buffer_client, buffer_client_len, hex);
 
            
-                  // hostname has changed
-                  // TODO maybe close the existing connection???
-#ifdef DEBUG_MODE
-                  log_info("The hostname extracted is [%s] and current hostname is [%s]",
-                           get_hostname(hostname), get_hostname(current_hostname));
-#endif
-                  // Update the current hostname
-                  memset(current_hostname, 0, 200);
-
-                  memcpy(current_hostname,hostname,strlen(hostname)+1);
-                  log_info("New hostname is [%s]", get_hostname(current_hostname));
-
-
+                 
                   /************* Perform the URL-based filtering ********************/
-                  // TODO seems url based filtering not happening
                   if ((ret = ub_url_permitted(buffer_client)) == -1)
                   {
                      log_error("URL is banned!");
@@ -426,9 +413,24 @@ void *handle_client(void *arg)
                   /******************************************************************/
 
 
+                  
+
                   // Check if host name has changed
                   if (strcmp(hostname, current_hostname) != 0 || new_connection_type != connection_type)
                   {
+
+                    // hostname has changed
+#ifdef DEBUG_MODE
+                    log_info("The hostname extracted is [%s] and current hostname is [%s]",
+                           get_hostname(hostname), get_hostname(current_hostname));
+#endif
+                    // Update the current hostname
+                    memset(current_hostname, 0, 200);
+
+                    memcpy(current_hostname,hostname,strlen(hostname)+1);
+                    log_info("New hostname is [%s]", get_hostname(current_hostname));
+
+
                      if (new_connection_type == 1)
                      {
                         if (setup_host_get_connection(current_hostname, servinfo, &sockfdp) != 0 )

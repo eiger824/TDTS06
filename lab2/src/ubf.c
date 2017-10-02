@@ -71,7 +71,7 @@ void ub_url_to_lower(char* url)
 int ub_url_extract(char* url, const char* msg)
 {
    unsigned i, init;
-   char hostname[200];
+   char hostname[2000];
    parse_hostname(hostname, msg);
    if (msg[0] == 'G') //GET
    {
@@ -92,7 +92,7 @@ int ub_url_extract(char* url, const char* msg)
       //start by copying the hostname first
       memcpy(url, hostname, strlen(hostname));
       //then store the relative path in subpath
-      char subpath[200];
+      char subpath[2000];
       for (i = init; msg[i] != ' '; ++i)
       {
          subpath[i-init] = msg[i];
@@ -122,7 +122,7 @@ int ub_url_permitted(const char* msg)
    {
       return -2;
    }
-   char url[200];
+   char url[2000];
 
    //1.) Extract URL from HTTP request
    if (!ub_url_extract(url, msg))
