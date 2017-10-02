@@ -129,6 +129,9 @@ int ub_url_permitted(const char* msg)
    {
       //2.) Convert it to lowercase
       ub_url_to_lower(url);
+
+      printf("====== URL =======\n%s\n==============\n", url);
+
       //3.) Check if that URL is in the URL blacklist
       if (!ub_url_in_blacklist(url))
       {

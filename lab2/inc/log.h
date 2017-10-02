@@ -33,53 +33,52 @@ void print(unsigned level,       /* level: ERROR (stderr) / INFO (stdout) */
            unsigned line,        /* line: The current line where the logging line is */
            const char* msg, ...) /* msg: Formated message with following (variadic) args */
 {
-   pthread_mutex_lock(&log_lock);
-   //update the time struct
-   gettimeofday(&time_after, NULL);
-   timersub(&time_before, &time_after, &time_result);
-
-   va_list args;
-   
-   long int usecs = (long int)time_result.tv_usec;
-   time_t timer;
-   struct tm* tm_info;
-
-   time(&timer);
-   tm_info = localtime(&timer);
-
-   char time_str[50];
-   time_str[strftime(time_str, 26, "%Y-%m-%d %H:%M:%S", tm_info)] = '\0';
-
-   char usecs_str[20];
-   usecs_str[sprintf(usecs_str, ".%06ld", usecs)] = '\0';
-
-   if (!level)
-      fprintf(stderr, "[%s%s] (%s:%d) ", time_str, usecs_str, filename, line);
-   else
+   if (LOG_ENABLED)
    {
-      if (LOG_ENABLED)
+      pthread_mutex_lock(&log_lock);
+      //update the time struct
+      gettimeofday(&time_after, NULL);
+      timersub(&time_before, &time_after, &time_result);
+
+      va_list args;
+   
+      long int usecs = (long int)time_result.tv_usec;
+      time_t timer;
+      struct tm* tm_info;
+
+      time(&timer);
+      tm_info = localtime(&timer);
+
+      char time_str[50];
+      time_str[strftime(time_str, 26, "%Y-%m-%d %H:%M:%S", tm_info)] = '\0';
+
+      char usecs_str[20];
+      usecs_str[sprintf(usecs_str, ".%06ld", usecs)] = '\0';
+
+      if (!level)
+         fprintf(stderr, "[%s%s] (%s:%d) ", time_str, usecs_str, filename, line);
+      else
+      {
          printf("[%s%s] (%s:%d) ", time_str, usecs_str, filename, line);
-   }
+      }
    
-   va_start(args, msg);
-   if (!level)
-   {
-      vfprintf(stderr, msg, args);
-      fprintf(stderr, "\n");
-   }
-   else
-   {
-      if (LOG_ENABLED)
+      va_start(args, msg);
+      if (!level)
+      {
+         vfprintf(stderr, msg, args);
+         fprintf(stderr, "\n");
+      }
+      else
       {
          vfprintf(stdout, msg, args);
          printf("\n");
       }
-   }
-   va_end(args);
+      va_end(args);
    
-   //and update time struct
-   memcpy(&time_before, &time_after, sizeof(time_before));
-   pthread_mutex_unlock(&log_lock);
+      //and update time struct
+      memcpy(&time_before, &time_after, sizeof(time_before));
+      pthread_mutex_unlock(&log_lock);
+   }
 }
 
 #endif /*LOG_H_*/
