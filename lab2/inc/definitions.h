@@ -6,7 +6,12 @@
 /*
   Maximum number of bytes to write/read from the socket
 */
-#define MAX_BUFFER_LENGTH 100000
+#define MAX_BUFFER_LENGTH 1100000
+
+/*
+  Maximum number of bytes on which to perform Content based filtering
+*/
+#define MAX_CBF_LENGTH 1048576
 
 /*
   Version of the current program

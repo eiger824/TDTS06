@@ -21,7 +21,7 @@
 #include "utils.h"
 
 int signo;                                               /* Signal nr to pass on to signal handler */
-bool hex = false, omit = false;                          /* Data in hex/dec, print data on/off */
+bool hex = false, omit = false, debug = false;           /* Data in hex/dec, print data on/off */
 unsigned nr_active_threads = 0;                          /* Number of currently running threads */
 int sockfd;                                              /* Server socket fd (client-proxy side) */
 int newsockfd;                                           /* Client socket fd (new incoming
@@ -70,6 +70,7 @@ int main(int argc, char *argv[])
       {
       case 'd':
          log_set(1);
+         debug = true;
          break;
       case 'h':
          help(argv[0]);
@@ -378,8 +379,11 @@ void *handle_client(void *arg)
                   received_http_header = 1;
 
                   log_info("Client sent data");
-                  print_data(buffer_client, buffer_client_len, hex);
-
+                  
+                  if(debug)
+                  {
+                    print_data(buffer_client, buffer_client_len, hex);
+                  }
            
                  
                   /************* Perform the URL-based filtering ********************/
@@ -458,6 +462,7 @@ void *handle_client(void *arg)
                         if ((ret = write(data->cli_sock_fd,
                                          "HTTP/1.1 200 Connection established\r\n\r\n", 39)) < 0)
                         {
+                          if (debug)
                            perror("Write");
                         }
 #ifdef DEBUG_MODE
@@ -486,6 +491,7 @@ void *handle_client(void *arg)
                   //Send it to server
                   if ((ret = write(sockfdp, buffer_client, buffer_client_len)) < 0)
                   {
+                    if (debug)
                      perror("Write");
                   }
 
@@ -531,6 +537,7 @@ void *handle_client(void *arg)
 #endif
 
 
+              //printf("Length is %d \n ", buffer_server_len);
                // Put data to client buffer
                for(i=0; i<n; i++)
                {
@@ -588,6 +595,7 @@ void *handle_client(void *arg)
                   //Send it back to the client
                   if ((ret = write(data->cli_sock_fd, buffer_server, buffer_server_len)) < 0)
                   {
+                    if (debug)
                      perror("Write");
                   }
                   else
@@ -606,7 +614,7 @@ void *handle_client(void *arg)
                {
 
                   // Check if all content received
-                  if(buffer_server_len == content_length_s + http_header_len_s)
+                  if(buffer_server_len == content_length_s + http_header_len_s || buffer_server_len > MAX_CBF_LENGTH)
                   {
                      // Perform content-based filtering after lowercasing buffer_server
                      //and triming all whitespaces
@@ -616,7 +624,10 @@ void *handle_client(void *arg)
                      text_trim_whitespaces(buffer_server_conv, buffer_server_len);
 
                      // TODO take the actual length
-                     print_data(buffer_server_conv, buffer_server_len, hex);
+                     if (debug)
+                     {
+                        print_data(buffer_server_conv, buffer_server_len, hex);
+                     }
 
                      //Check if the converted page is suitable
                      if (cb_page_permitted(buffer_server_conv) == -1)
@@ -632,10 +643,10 @@ void *handle_client(void *arg)
                         free_resources(hostname, current_hostname, buffer_temp, servinfo, data);
                         pthread_exit(NULL);
                         state = HALF_CONNECTION;
+                        do_content_filtering = 0;
 
                         bzero(buffer_server,MAX_BUFFER_LENGTH);
                         buffer_server_len = 0;
-                        do_content_filtering = 0;
 
                      }
                      else //send it (unconverted)
@@ -644,14 +655,21 @@ void *handle_client(void *arg)
                         //Send it back to the client
                         if ((ret = write(data->cli_sock_fd, buffer_server, buffer_server_len)) < 0)
                         {
+                          if (debug)
                            perror("Write");
+
                         }
                         else
                         {
 #ifdef DEBUG_MODE
                            log_info("(C <-- P)Proxy forwarded data back to client (%d bytes)", ret);
 #endif
-                           state = HALF_CONNECTION;
+                           
+                           if ( buffer_server_len == content_length_s + http_header_len_s )
+                           {
+                            state = HALF_CONNECTION;
+                           }
+
                            do_content_filtering = 0;
                            bzero(buffer_server,MAX_BUFFER_LENGTH);
                            buffer_server_len = 0;
@@ -679,6 +697,7 @@ void *handle_client(void *arg)
          // timeout
          if ((ret = write(data->cli_sock_fd, buffer_server, buffer_server_len)) < 0)
          {
+           if (debug)
             perror("Write");
          }
 
