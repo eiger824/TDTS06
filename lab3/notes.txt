@@ -1,0 +1,9 @@
+Task A
+At the HTTP level, the client basically creates a POST request containing the file to upload to the server (the server is listening in port 80 as usual) and the server replies with a 200 OK code.
+
+2,3 - At the TCP level, the client (192.168.1.102:1161) and the server (128.119.245.12:80) perform a three-way-handshake (packets 1,2,3 when filtering by tcp in Wireshark).
+8 - The length of the first TCP segment is 565Bytes, and the length of the following 5 is 1460Bytes.
+6. The (relative) sequence number of the TCP segment containing the HTTP POST request is 1.
+5. The sequence number of the SYNACK segment sent by gaia.cs.umass.edu in reply to the SYN is 0, and the value of the ACK field is 1. The corresponding flags are set (both SYN and ACK)
+4. The value is 0. The corresponding flag is enabled in the flags field (just SYN).
+1 - Packets 1 and 213
