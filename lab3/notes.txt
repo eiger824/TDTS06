@@ -1,9 +1,26 @@
-Task A
-At the HTTP level, the client basically creates a POST request containing the file to upload to the server (the server is listening in port 80 as usual) and the server replies with a 200 OK code.
-
 2,3 - At the TCP level, the client (192.168.1.102:1161) and the server (128.119.245.12:80) perform a three-way-handshake (packets 1,2,3 when filtering by tcp in Wireshark).
 8 - The length of the first TCP segment is 565Bytes, and the length of the following 5 is 1460Bytes.
 6. The (relative) sequence number of the TCP segment containing the HTTP POST request is 1.
 5. The sequence number of the SYNACK segment sent by gaia.cs.umass.edu in reply to the SYN is 0, and the value of the ACK field is 1. The corresponding flags are set (both SYN and ACK)
 4. The value is 0. The corresponding flag is enabled in the flags field (just SYN).
 1 - Packets 1 and 213
+
+
+Task B:
+
+q13 - No. It seems that the data is coming to the tcp layer (from the host browser) at a lower rate than network capacity, so the tcp layer does not have to aggressively increase its cwnd.
+
+
+q14 - The congestion window is maintained at the client, and denotes how many unack segments can be there in the network. This is maintained so as to not congest the network by sending too many bytes at once.
+The rcv window is sent by the receiver and denotes how much more data the receiver can buffer. This is done for flow control, ie to ensure that sender doesnt send data at a higher rate than the receiver can handle.
+
+Number of unack bytes is used by the sender for both flow control as well as congestion control. It should be lower than the both cwin and rcvwind
+
+The effective window at the sender is the min of rcv window and cwind and denotes how many uack bytes the sender can have in the network.
+
+EW = (last_byte_sent - last_byte_acked) <= min(cwnd, rwnd)
+
+q15 - If the host is sending the data at a high rate so that the network speed is the bottleneck, then it should be possible to find cwind from the trace by looking at how many unck bytes are there in the network, since that should be equal to cwind when the tcp sender always has data to send. However if sender is sending data at low rate, then its not possible.
+
+q16 - 2535059 bps for 1, 2546529 bps for 2, 2575234 bps for 3 and 2550558 bps for 4. total: 10207380 bps. Since all connections are made from the same host using the same link, the RTT can be ruled out from the calculation and the total bw can be calculated by just adding up the individual bw's for every connection.
+EIF
