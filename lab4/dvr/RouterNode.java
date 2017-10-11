@@ -118,10 +118,20 @@ public class RouterNode {
 	  myGUI.println("Current table for " + myID +
 			"  at time " + sim.getClocktime());
  
-          myGUI.println("Current costs is: ");
-
-          for (int id:costs) {
-	      myGUI.println(id + "   ");
+          myGUI.println("Distancetable:");
+          myGUI.println_sameline("dst    |    ");
+          for (int k=0; k<RouterSimulator.NUM_NODES; ++k)
+             myGUI.println_sameline(k + "\t");
+          myGUI.println_sameline("\n---------------------------------");
+          myGUI.println("---------------------------------");
+          
+          for (int i=0; i<RouterSimulator.NUM_NODES; i++) {
+             myGUI.println_sameline("nbr " + i + " |   ");
+             for (int j=0; j<RouterSimulator.NUM_NODES; j++) {
+                //print lines, so we want a fix 'i' and loop through 'j'
+                myGUI.println_sameline(dist_table[i][j] + "\t");
+             }
+             myGUI.println();
           }
   }
 

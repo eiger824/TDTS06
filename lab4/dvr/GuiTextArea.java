@@ -32,5 +32,5 @@ public class GuiTextArea {
     }
     public void println(String s) { print(s+"\n"); }
     public void println()         { print("\n"); }
-
+    public void println_sameline(String s) { print(s); }
 }
