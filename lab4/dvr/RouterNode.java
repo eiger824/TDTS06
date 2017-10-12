@@ -8,7 +8,7 @@ public class RouterNode {
   private int[][] dist_table = new int[RouterSimulator.NUM_NODES][RouterSimulator.NUM_NODES];
   private int[] next_hop = new int[RouterSimulator.NUM_NODES];
 
-  private int do_poison = 1;
+  private int do_poison =0;
   // Dist table is of the form
   // From A:    to A   to B   to C
   //  via A

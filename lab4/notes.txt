@@ -1,0 +1,20 @@
+Lab4 - report
+
+
+1.) How dvr works
+Each node maintains a table of distances to all the nodes in the network.
+Initially, each node knows only the distances to its neightbours, and whenever
+a node updates its distance table, it sends the updated costs to its neighbours.
+Whenever a node receives a message from node k, it finds the distances to all
+other nodes via k. (reformulate later), and update the distance table. Then it finds the new minimum costs to all the nodes. If any of the minimum costs changed, then the node will send the new costs to all its neighbours. Eventually all the distance nodes will converge to the correct minimum paths to all other nodes. 
+
+//put iimage 7a and describe
+
+// Talk about poison reverse
+
+2) We ran the dvr on provided networks using the simulator and looked at the final converged distance table for all the nodes and verified if they were correct. We also checked if we were having count to infinity problem when LINKCHANGES was set to true, both in case of poison reverse and no poison reverse. We checked the time for convergence both in case of poison reverse and no poison reverse and verified that convergence was faster with poison reverse. 
+
+
+3) If there are loops with more than 2 nodes, the poison reverse may fail. For eg (put the figure, and some explation) 
+
+4) We can either 1) Send the path vector to all the nodes (add reference) bla bla bla. 2) We can also keep track of number of hops for each paths, and ensure that they are smaller than something (to prevent loops). (add reference)

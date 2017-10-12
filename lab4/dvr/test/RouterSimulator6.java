@@ -94,7 +94,7 @@ should not have to, and you defeinitely should not have to modify
     connectcosts[2][3]=2;
     connectcosts[3][0]=INFINITY;
     connectcosts[3][1]=1;
-    connectcosts[3][2]=1;
+    connectcosts[3][2]=2;
     
     nodes = new RouterNode[NUM_NODES];
     for(int i=0;i<NUM_NODES;i++)
