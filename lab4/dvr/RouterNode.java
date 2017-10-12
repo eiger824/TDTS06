@@ -24,7 +24,6 @@ public class RouterNode {
     myGUI =new GuiTextArea("  Output window for Router #"+ ID + "  ");
 
     System.arraycopy(costs, 0, this.costs, 0, RouterSimulator.NUM_NODES);
-    printDistanceTable();
 
     // Fill in distance table with 999
     for (int i=0; i < RouterSimulator.NUM_NODES; i++) {
@@ -40,12 +39,15 @@ public class RouterNode {
         next_hop[i] = i;
     }
 
+    printDistanceTable(); 
     for (int i=0; i < RouterSimulator.NUM_NODES; i++) {
       if ( i != myID && dist_table[i][i] != 999) {
         RouterPacket new_packet = new RouterPacket(myID, i, costs);
         sendUpdate(new_packet);
       }
     }
+
+    
   }
 
   //--------------------------------------------------
@@ -55,7 +57,13 @@ public class RouterNode {
 
     // Update dist table
     for (int i=0; i < RouterSimulator.NUM_NODES; i++) {
-    	dist_table[receive_node][i] = dist_table[receive_node][receive_node] + pkt.mincost[i];
+        if (i != myID) {
+        if (dist_table[receive_node][receive_node] != 999 && pkt.mincost[i] != 999) {
+    	  dist_table[receive_node][i] = dist_table[receive_node][receive_node] + pkt.mincost[i];
+        } else {
+          dist_table[receive_node][i] = 999;
+        }
+        }
     }
 
     // Find new min dist for each node
@@ -84,6 +92,7 @@ public class RouterNode {
         }
     }
 
+    //printDistanceTable(); 
     // Update the List  
     if (table_changed > 0 ) {
     for (int i=0; i < RouterSimulator.NUM_NODES; i++) {
@@ -116,9 +125,9 @@ public class RouterNode {
   //--------------------------------------------------
   public void printDistanceTable() {
 	  myGUI.println("Current table for " + myID +
-			"  at time " + sim.getClocktime());
+			"  at time " + sim.getClocktime() + "\n\n");
  
-          myGUI.println("Distancetable:");
+          myGUI.println("Distance Table:\n");
           myGUI.println_sameline("dst    |    ");
           for (int k=0; k<RouterSimulator.NUM_NODES; ++k)
              myGUI.println_sameline(k + "\t");
@@ -133,6 +142,28 @@ public class RouterNode {
              }
              myGUI.println();
           }
+          myGUI.println("\n");
+
+          myGUI.println("Distance vector and routes:\n");
+
+          myGUI.println_sameline("dst     |    ");
+          for (int k=0; k<RouterSimulator.NUM_NODES; ++k) {
+             myGUI.println_sameline(k + "\t");
+          }
+          myGUI.println_sameline("\n---------------------------------");
+          myGUI.println("---------------------------------");
+          myGUI.println_sameline("Cost   |   ");
+
+          for (int k=0; k<RouterSimulator.NUM_NODES; ++k) {
+             myGUI.println_sameline(costs[k] + "\t");
+          }
+
+          myGUI.println_sameline("\nRoute |   ");
+
+          for (int k=0; k<RouterSimulator.NUM_NODES; ++k) {
+             myGUI.println_sameline(next_hop[k] + "\t");
+          }
+           myGUI.println("\n");
   }
 
   //--------------------------------------------------
