@@ -53,3 +53,13 @@ install5:
 	-@make clobber
 	-@cp test/RouterSimulator5.java RouterSimulator.java
 
+
+install6:
+	-@echo 
+	-@echo "  Warning: this command will overwrite file ./RouterSimulator.java"
+	-@echo 
+	-@echo "Continue with ^D, exit with ^C"
+	-@cat > /dev/null
+	-@make clobber
+	-@cp test/RouterSimulator6.java RouterSimulator.java
+
